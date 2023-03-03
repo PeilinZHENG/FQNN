@@ -107,7 +107,7 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
-    U = torch.linspace(1.5, 2.5, 60, device=device)
+    U = torch.linspace(1.5, 2.5, 50, device=device)
     mu = U / 2.
     E_mu = -0.06 * torch.ones(len(U), device=device)  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
