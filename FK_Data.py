@@ -53,7 +53,7 @@ def genData(amount, L):
 
 
 if __name__ == "__main__":
-    L = 12
+    L = 20
 
     TYPE = 'test'
     amount, processors = 4, 50  # total_amount = amount * processors

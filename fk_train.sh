@@ -36,7 +36,7 @@ ss=20
 drop=0
 disor=0
 
-epochs=5
+epochs=3
 workers=8
 batchsize=32
 print_freq=20

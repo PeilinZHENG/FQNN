@@ -2,11 +2,12 @@ import torch
 
 
 class DMFT:
-    def __init__(self, T=1e-2, count=100, iota=0., momentum=0., device=torch.device('cpu'), double=True):
+    def __init__(self, T=1e-2, count=100, iota=0., momentum=0., maxEpoch=100, device=torch.device('cpu'), double=True):
         self.T = T
         self.count = count * 2
         self.iota = iota
         self.momentum = momentum
+        self.MAXEPOCH = maxEpoch
         self.iomega = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(1) + 1) * torch.pi * self.T  # (count, 1)
         if double: self.iomega = self.iomega.type(torch.complex128)
 
@@ -41,7 +42,7 @@ class DMFT:
         # SE = 0. + 1. * torch.randn((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
         min_error = 1e10
         best_SE = None
-        for l in range(2000):
+        for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             if model is None:
                 Gloc = torch.diagonal((H_omega - torch.diag_embed(SE)).inverse(), dim1=-2, dim2=-1)  # (bz, count, size)
@@ -106,7 +107,7 @@ if __name__ == "__main__":
     from FK_rgfnn import Network
     import matplotlib.pyplot as plt
     import os
-    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '5'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
@@ -117,7 +118,8 @@ if __name__ == "__main__":
     T = 0.01
     count = 50
     momentum = 0.5
-    scf = DMFT(T, count, momentum=momentum, device=device)
+    maxEpoch = 2000
+    scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, device=device)
 
     '''construct FQNN'''
     model_path = 'models/FK_{}/STRUCTURE/Naive_1'.format(L)
