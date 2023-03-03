@@ -56,7 +56,7 @@ source activate
 conda activate pytorch
 
 
-python FK_Train_imag.py \
+python FK_Train.py \
   -t $threads -j $workers -b $batchsize -p $print_freq -s $save_freq --epochs $epochs --data $data \
   --gpu $gpu --Tem $Tem --count $count --iota $iota --momentum $momentum --seed $seed --loss $loss \
   --opt $opt --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss --double --scale \

@@ -13,7 +13,7 @@ import torchvision.datasets as datasets
 from utils import *
 from FK_rgfnn import Network
 from ent import computeI, getIndex
-from FK_DMFT_imag import DMFT
+from FK_DMFT import DMFT
 
 warnings.filterwarnings('ignore')
 
