@@ -1,5 +1,5 @@
 import torch
-import numpy
+
 
 class DMFT:
     def __init__(self, T=1e-2, count=100, iota=0., momentum=0., device=torch.device('cpu'), double=True):
@@ -39,7 +39,9 @@ class DMFT:
         '''0. initialize self-energy'''
         SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
         # SE = 0. + 1. * torch.randn((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
-        for l in range(100):
+        min_error = 1e10
+        best_SE = None
+        for l in range(2000):
             '''1. compute G_{loc}'''
             if model is None:
                 Gloc = torch.diagonal((H_omega - torch.diag_embed(SE)).inverse(), dim1=-2, dim2=-1)  # (bz, count, size)
@@ -57,13 +59,16 @@ class DMFT:
             if error < 1e-4:
                 if prinfo:
                     print("final error: {}".format(error))
-                    print(torch.round(nf.real.cpu(), decimals=3).numpy())
+                    # print(torch.round(nf.real.cpu(), decimals=3).numpy())
                 return SE  # (bz, count, size)
             else:
+                if error < min_error:
+                    min_error = error
+                    best_SE = SE
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
                 if prinfo:
                     print("{} loop error: {}".format(l, error))
-        return SE
+        return best_SE
 
 
 def pbc(x, L):
@@ -99,6 +104,10 @@ def Ham(L, mu):
 
 if __name__ == "__main__":
     from FK_rgfnn import Network
+    import matplotlib.pyplot as plt
+    import os
+    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+    os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
@@ -106,23 +115,39 @@ if __name__ == "__main__":
 
     '''construct DMFT'''
     T = 0.01
-    count = 30
+    count = 50
     momentum = 0.5
     scf = DMFT(T, count, momentum=momentum, device=device)
 
     '''construct FQNN'''
-    model = Network('Naive', L ** 2, 2, 100, 64, scf.iomega, double=True).to(device)
+    model_path = 'models/FK_{}/STRUCTURE/Naive_1'.format(L)
+    model = Network('Naive', L ** 2, 2, 100, 64, scf.iomega, double=True)
+    checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
+    model.load_state_dict(checkpoint['state_dict'], strict=False)
+    model = model.to(device)
+    model.eval()
 
     '''construct Hamiltonian'''
-    U = torch.tensor([1.5, 2.5], device=device)
-    mu = U / 2
+    U = torch.linspace(1.5, 2.5, 50, device=device)
+    mu = U / 2.
     E_mu = -0.06 * torch.ones(len(U), device=device)  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
 
     '''compute self-energy by DMFT'''
-    SE = scf(H0, E_mu, U, prinfo=True)  # (bz, 1, size)
+    SE = scf(H0, E_mu, U, model, prinfo=True)  # (bz, 1, size)
 
     '''compute ground state energy'''
     H = H0 + torch.diag_embed(SE)
-    # LDOS = model(H)
-    # print(LDOS)
+    LDOS = model(H)
+    P = torch.nn.functional.softmax(LDOS, dim=1)[:, 1].data.cpu().numpy()
+    U = U.cpu().numpy()
+    plt.figure()
+    plt.axis([U[0], U[-1], 0., 1.])
+    plt.plot([2., 2.], [0., 1.], 'ko--', linewidth=0.5, markersize=0.1)
+    plt.plot([2.14, 2.14], [0., 1.], 'ko--', linewidth=0.5, markersize=0.1)
+    plt.scatter(U, P, s=20, c='r', marker='o')
+    plt.xlabel('U')
+    plt.ylabel('P')
+    plt.title('Metal VS Insulator')
+    plt.show()
+    plt.close()
