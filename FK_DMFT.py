@@ -72,39 +72,9 @@ class DMFT:
         return best_SE
 
 
-def pbc(x, L):
-    return x % L
-
-
-def l2c(x, y, L):  # 2D coordinate -> 1D coordinate
-    x, y = pbc(x, L), pbc(y, L)
-    return x + y * L
-
-
-def Ham(L, mu):
-    H = torch.diag_embed(-mu * torch.ones(L ** 2)).type(torch.complex128)
-    for x in range(L):
-        for y in range(L):
-            n = l2c(x, y, L)
-            # nearest neighbor
-            nx = l2c(x + 1, y, L)
-            ny = l2c(x, y + 1, L)
-            H[nx, n] = H[nx, n] - 1.
-            H[n, nx] = H[n, nx] - 1.
-            H[ny, n] = H[ny, n] - 1.
-            H[n, ny] = H[n, ny] - 1.
-            # # next nearest neighbor
-            # n1 = l2c(x + 1, y + 1, L)
-            # n2 = l2c(x + 1, y - 1, L)
-            # H[n1, n] = H[n1, n] - 1.
-            # H[n, n1] = H[n, n1] - 1.
-            # H[n2, n] = H[n2, n] - 1.
-            # H[n, n2] = H[n, n2] - 1.
-    return H
-
-
 if __name__ == "__main__":
     from FK_rgfnn import Network
+    from FK_Data import Ham
     import matplotlib.pyplot as plt
     import os
     os.environ['CUDA_VISIBLE_DEVICES'] = '5'
@@ -122,7 +92,7 @@ if __name__ == "__main__":
     scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, device=device)
 
     '''construct FQNN'''
-    model_path = 'models/FK_{}/STRUCTURE/Naive_1'.format(L)
+    model_path = 'models/FK_{}/Naive_1'.format(L)
     model = Network('Naive', L ** 2, 2, 100, 64, scf.iomega, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
     model.load_state_dict(checkpoint['state_dict'], strict=False)
@@ -138,14 +108,16 @@ if __name__ == "__main__":
     '''compute self-energy by DMFT'''
     SE = scf(H0, E_mu, U, model, prinfo=True)  # (bz, 1, size)
 
-    '''compute ground state energy'''
+    '''compute phase diagram'''
     H = H0 + torch.diag_embed(SE)
     LDOS = model(H)
     P = torch.nn.functional.softmax(LDOS, dim=1)[:, 1].data.cpu().numpy()
     U = U.cpu().numpy()
+
+    '''plot phase diagram'''
     plt.figure()
     plt.axis([U[0], U[-1], 0., 1.])
-    plt.plot([2., 2.], [0., 1.], 'ko--', linewidth=0.5, markersize=0.1)
+    plt.plot([2., 2.], [0., 1.], 'bo--', linewidth=0.5, markersize=0.1)
     plt.plot([2.14, 2.14], [0., 1.], 'ko--', linewidth=0.5, markersize=0.1)
     plt.scatter(U, P, s=20, c='r', marker='o')
     plt.xlabel('U')

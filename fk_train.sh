@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=0
+gpu=1
 threads=8
 
 # Parameters of DMFT
@@ -9,7 +9,7 @@ iota=0
 momentum=0.5
 
 # Parameters of training
-data=FK_12
+data=FK_16
 Net=Naive_1
 input_size=144
 embedding_size=100
@@ -39,7 +39,7 @@ disor=0
 epochs=3
 workers=8
 batchsize=32
-print_freq=20
+print_freq=10
 save_freq=1
 seed=0
 
