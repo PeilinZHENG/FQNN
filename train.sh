@@ -3,10 +3,11 @@ gpu=0
 threads=16
 
 # Parameters of training
+L=28
 data=MNIST
 adj=None
 Net=CMedian_g_no_0
-input_size=784
+input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
 output_size=1

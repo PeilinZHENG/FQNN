@@ -75,14 +75,19 @@ class DMFT:
 if __name__ == "__main__":
     from FK_rgfnn import Network
     from FK_Data import Ham
+    from utils import mymkdir
+    import numpy as np
     import matplotlib.pyplot as plt
-    import os
+    import os, mkl
     os.environ['CUDA_VISIBLE_DEVICES'] = '5'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+    mkl.set_num_threads(8)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
     L = 12  # size = L ** 2
+    save = True
+    show = True
 
     '''construct DMFT'''
     T = 0.01
@@ -92,15 +97,17 @@ if __name__ == "__main__":
     scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, device=device)
 
     '''construct FQNN'''
-    model_path = 'models/FK_{}/Naive_1'.format(L)
+    data = 'FK_{}'.format(L)
+    Net = 'Naive_1'
+    model_path = 'models/{}/{}'.format(data, Net)
     model = Network('Naive', L ** 2, 2, 100, 64, scf.iomega, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
     model.load_state_dict(checkpoint['state_dict'], strict=False)
     model = model.to(device)
     model.eval()
 
-    '''construct Hamiltonian'''
-    U = torch.linspace(1.5, 2.5, 50, device=device)
+    '''construct Hamiltonians'''
+    U = torch.linspace(1.5, 2.5, 51, device=device)
     mu = U / 2.
     E_mu = -0.06 * torch.ones(len(U), device=device)  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
@@ -123,5 +130,12 @@ if __name__ == "__main__":
     plt.xlabel('U')
     plt.ylabel('P')
     plt.title('Metal VS Insulator')
-    plt.show()
+    if save:
+        path = 'results/{}'.format(data)
+        mymkdir(path)
+        path = '{}/{}'.format(path, Net)
+        mymkdir(path)
+        plt.savefig('{}/PD.jpg'.format(path))
+    if show: plt.show()
     plt.close()
+    if save: np.save('{}/{}.npy'.format(path, 'PD'), np.stack((U, P), axis=0))

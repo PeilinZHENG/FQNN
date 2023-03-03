@@ -51,10 +51,10 @@ def genData(amount, L):
 
 
 if __name__ == "__main__":
-    L = 20
+    L = 24
 
-    TYPE = 'test'
-    amount, processors = 4, 50  # total_amount = amount * processors
+    TYPE = 'train'
+    amount, processors = 40, 50  # total_amount = amount * processors
 
     # torch.manual_seed(0)
 

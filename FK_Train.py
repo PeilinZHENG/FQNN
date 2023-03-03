@@ -108,6 +108,8 @@ parser.add_argument('--iota', default=1e-3, type=float,
                     help='iota')
 parser.add_argument('--momentum', default=0., type=float,
                     help='momentum')
+parser.add_argument('--maxEpoch', default=100, type=int,
+                    help='max epoch')
 
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
@@ -142,7 +144,8 @@ def main(args):
         args.input_size, args.embedding_size, args.hidden_size, args.output_size))
     args.f.write('z={}\thermi={}\tdiago={}\trestr={}\tscale={}\treal={}\tdouble={}\n'.format(
         None, args.hermi, args.diago, args.restr, args.scale, args.real, args.double))
-    args.f.write('T={}\tcount={}\tiota={}\tmomentum={}\n'.format(args.Tem, args.count, args.iota, args.momentum))
+    args.f.write('T={}\tcount={}\tiota={}\tmomentum={}\tmaxEpoch={}\n'.format(
+        args.Tem, args.count, args.iota, args.momentum, args.maxEpoch))
     args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\tgradsnorm={}\n'.format(
         args.data, args.entanglement, args.delta, args.tc, args.gradsnorm))
     args.f.write('lossfunc={}\topt={}\tlr={}\tbetas={}\twd={}\tlars={}\tdevice={}\n'.format(
@@ -204,7 +207,7 @@ def main(args):
 def main_worker(args):
     global best_acc1
     print("Use GPU: {} for training".format(args.gpu))
-    scf = DMFT(args.Tem, args.count, args.iota, args.momentum, args.device, args.double)
+    scf = DMFT(args.Tem, args.count, args.iota, args.momentum, args.maxEpoch, args.device, args.double)
 
     # create model
     Net = args.Net[:args.Net.index('_')]
@@ -290,7 +293,7 @@ def main_worker(args):
     val_dataset = LoadFKHamData(valdata, vallabels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
                               pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=16, shuffle=False, num_workers=args.workers, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False, num_workers=args.workers, pin_memory=True)
     print('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}'.format(
         len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
     args.f.write('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}\n\n'.format(

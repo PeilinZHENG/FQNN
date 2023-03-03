@@ -7,11 +7,13 @@ Tem=1e-2
 count=50
 iota=0
 momentum=0.5
+maxEpoch=100
 
 # Parameters of training
-data=FK_16
+L=16
+data=FK_${L}
 Net=Naive_1
-input_size=144
+input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
 output_size=2
@@ -38,8 +40,8 @@ disor=0
 
 epochs=3
 workers=8
-batchsize=32
-print_freq=10
+batchsize=16
+print_freq=20
 save_freq=1
 seed=0
 
@@ -58,9 +60,9 @@ conda activate pytorch
 
 python FK_Train.py \
   -t $threads -j $workers -b $batchsize -p $print_freq -s $save_freq --epochs $epochs --data $data \
-  --gpu $gpu --Tem $Tem --count $count --iota $iota --momentum $momentum --seed $seed --loss $loss \
-  --opt $opt --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss --double --scale \
-  --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm \
+  --gpu $gpu --Tem $Tem --count $count --iota $iota --momentum $momentum --maxEpoch $maxEpoch \
+  --opt $opt --loss $loss --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss \
+  --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm --seed $seed \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \
-  --drop $drop --disor $disor --init_bound $bound --restr $restr --hermi $hermi --diago $diago \
+  --drop $drop --disor $disor --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale \
   --lars
