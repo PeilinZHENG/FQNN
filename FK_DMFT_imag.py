@@ -114,13 +114,10 @@ if __name__ == "__main__":
     model = Network('Naive', L ** 2, 2, 100, 64, scf.iomega, double=True).to(device)
 
     '''construct Hamiltonian'''
-    U = torch.tensor([0.5], device=device)
-    mu = (U / 2).item()
-    E_mu = torch.tensor([-0.06], device=device)  # E - mu  (-0.066)
-    H0 = Ham(L, mu)[None, None, ...].to(device)
-    U = torch.tensor([3.5], device=device)
-    mu = (U / 2).item()
-    H0 = torch.cat((H0, Ham(L, mu)[None, None, ...].to(device)), dim=0)
+    U = torch.tensor([1.5, 2.5], device=device)
+    mu = U / 2
+    E_mu = -0.06 * torch.ones(len(U), device=device)  # E - mu  (-0.066)
+    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
 
     '''compute self-energy by DMFT'''
     SE = scf(H0, E_mu, U, prinfo=True)  # (bz, 1, size)
