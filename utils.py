@@ -476,11 +476,11 @@ def compute_grads(module, order=2):
     return total_norm, total_norm / count
 
 
-def my_ceil(a, precision=0):
+def myceil(a, precision=0):
     return np.true_divide(np.ceil(a * 10 ** precision), 10 ** precision)
 
 
-def my_floor(a, precision=0):
+def myfloor(a, precision=0):
     return np.true_divide(np.floor(a * 10 ** precision), 10 ** precision)
 
 

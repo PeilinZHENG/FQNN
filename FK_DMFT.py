@@ -75,7 +75,7 @@ class DMFT:
 if __name__ == "__main__":
     from FK_rgfnn import Network
     from FK_Data import Ham
-    from utils import mymkdir
+    from utils import mymkdir, myceil
     import numpy as np
     import matplotlib.pyplot as plt
     from torch.nn.functional import softmax
@@ -114,20 +114,18 @@ if __name__ == "__main__":
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
 
     '''compute self-energy by DMFT'''
-    bz = 16
+    bz = 20
     P = []
-    num_batch = int(len(U) / bz)
-    for i in range(num_batch):
+    for i in range(myceil(len(U) / bz)):
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
         E_mu_batch = E_mu[i * bz:(i + 1) * bz].to(device)
         U_batch = U[i * bz:(i + 1) * bz].to(device)
-        SE = scf(H0_batch, E_mu_batch, U_batch, model)  # (bz, 1, size)
+        SE = scf(H0_batch, E_mu_batch, U_batch, model, prinfo=True if i == 0 else False)  # (bz, 1, size)
         '''compute phase diagram'''
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)
         P.append(softmax(LDOS, dim=1)[:, 1].data.cpu())
-    SE = scf(H0[num_batch * bz:], E_mu[num_batch * bz:], U[num_batch * bz:], model, prinfo=True)  # (bz, 1, size)
-    P = torch.cat([*P, softmax(model(H0[num_batch * bz:] + torch.diag_embed(SE)), dim=1)[:, 1].data.cpu()], dim=0).numpy()
+    P = torch.cat(P, dim=0).numpy()
     U = U.numpy()
 
     '''plot phase diagram'''
