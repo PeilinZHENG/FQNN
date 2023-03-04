@@ -80,7 +80,7 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
     from torch.nn.functional import softmax
     import os, mkl
-    os.environ['CUDA_VISIBLE_DEVICES'] = '4'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     mkl.set_num_threads(8)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
