@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=1
+gpu=4
 threads=8
 
 # Parameters of DMFT
@@ -7,7 +7,7 @@ Tem=1e-2
 count=50
 iota=0
 momentum=0.5
-maxEpoch=100
+maxEpoch=300
 
 # Parameters of training
 L=16
