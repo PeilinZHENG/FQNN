@@ -476,12 +476,14 @@ def compute_grads(module, order=2):
     return total_norm, total_norm / count
 
 
-def myceil(a, precision=0):
-    return np.true_divide(np.ceil(a * 10 ** precision), 10 ** precision)
+def myceil(a, precision: int = 0):
+    a = np.true_divide(np.ceil(a * 10 ** precision), 10 ** precision)
+    return a if precision > 0 else int(a)
 
 
-def myfloor(a, precision=0):
-    return np.true_divide(np.floor(a * 10 ** precision), 10 ** precision)
+def myfloor(a, precision: int = 0):
+    a = np.true_divide(np.floor(a * 10 ** precision), 10 ** precision)
+    return a if precision > 0 else int(a)
 
 
 def mymkdir(path):
