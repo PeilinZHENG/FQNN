@@ -29,7 +29,7 @@ class DMFT:
         return -torch.sum(SE * torch.exp(iomega * tau), dim=1, keepdim=True).real / self.count / self.T / torch.pi  # (bz, 1, size)
 
     @torch.no_grad()
-    def __call__(self, H0, E_mu, U, model=None, prinfo=False):  # E_mu, U: (bz,)
+    def __call__(self, H0, E_mu, U, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
         bz, _, _, size = H0.shape
         H0 = H0.tile(1, self.count, 1, 1) # (bz, count, size, size)
         device, dtype = H0.device, H0.dtype
@@ -38,8 +38,11 @@ class DMFT:
         if model is None:
             H_omega = torch.diag_embed(self.iomega.expand(-1, size)) - H0  # (bz, count, size, size)
         '''0. initialize self-energy'''
-        SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
-        # SE = 0. + 1. * torch.randn((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
+        if SEinit is None:
+            SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
+            # SE = 0. + 1. * torch.randn((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
+        else:
+            SE = SEinit
         min_error = 1e10
         best_SE = None
         for l in range(self.MAXEPOCH):
