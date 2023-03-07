@@ -25,13 +25,56 @@ class DMFT:
 
     def calc_nf(self, WeissInv, iomega, E_mu, U):
         z = torch.sum(torch.log(1 - U / WeissInv) * torch.exp(iomega * self.iota), dim=1) - E_mu / self.T # (bz, size)
-        return self.nan_to_num(torch.sigmoid(z)).unsqueeze(1)  # (bz, 1, size)
+        return self.nan_to_num(torch.sigmoid(z)).unsqueeze(1).real  # (bz, 1, size)
 
-    def fix_filling(self, nf):
-        return nf / torch.mean(nf, dim=-1, keepdim=True) * self.filling
+    def fix_filling(self, E_mu, WeissInv, U):
+        nf = self.calc_nf(WeissInv, self.iomega, E_mu, U)
+        return torch.mean(nf, dim=-1) - self.filling  # (bz, 1)
 
-    def fourier(self, SE, iomega, tau):
-        return -torch.sum(SE * torch.exp(iomega * tau), dim=1, keepdim=True).real / self.count / self.T / torch.pi  # (bz, 1, size)
+    def bisection(self, fun, a, WeissInv, U, mingap=5.):
+        fa = fun(a, WeissInv, U)
+        b = a + mingap
+        fb = fun(b, WeissInv, U)
+        for i in torch.nonzero(fa * fb > 0, as_tuple=True)[0]:
+            if fa[i] > 0:
+                if fa[i] < fb[i]:
+                    while fa[i] > 0:
+                        b[i], fb[i] = a[i], fa[i]
+                        a[i] = a[i] - mingap
+                        fa[i] = fun(a[i:i+1], WeissInv[i:i+1], U[i:i+1])
+                else:
+                    while fb[i] > 0:
+                        a[i], fa[i] = b[i], fb[i]
+                        b[i] = b[i] + mingap
+                        fb[i] = fun(b[i:i+1], WeissInv[i:i+1], U[i:i+1])
+            else:
+                if fa[i] < fb[i]:
+                    while fb[i] < 0:
+                        a[i], fa[i] = b[i], fb[i]
+                        b[i] = b[i] + mingap
+                        fb[i] = fun(b[i:i+1], WeissInv[i:i+1], U[i:i+1])
+                else:
+                    while fa[i] < 0:
+                        b[i], fb[i] = a[i], fa[i]
+                        a[i] = a[i] - mingap
+                        fa[i] = fun(a[i:i+1], WeissInv[i:i+1], U[i:i+1])
+        index = torch.nonzero(torch.abs(fa) < 1e-6, as_tuple=True)
+        if len(index[0]) > 0: b[index] = a[index]
+        index = torch.nonzero(torch.abs(fb) < 1e-6, as_tuple=True)
+        if len(index[0]) > 0: a[index] = b[index]
+        while True:
+            c = (a + b) / 2
+            fc = fun(c, WeissInv, U)
+            index = torch.nonzero(torch.abs(fc) < 1e-6, as_tuple=True)
+            if len(index[0]) > 0:
+                a[index] = c[index]
+                b[index] = c[index]
+            if torch.linalg.norm((b - a) / 2) < 1e-6:
+                return (b + a) / 2
+            index = torch.nonzero(fc * fun(a, WeissInv, U) < 0, as_tuple=True)
+            b[index] = c[index]
+            c[index] = a[index]
+            a = c
 
     @torch.no_grad()
     def __call__(self, H0, E_mu, U, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
@@ -59,16 +102,17 @@ class DMFT:
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, count, size)
             '''3. compute G_{imp}'''
-            nf = self.calc_nf(WeissInv, self.iomega, E_mu, U) # (bz, 1, size)
             if self.filling is not None:
-                nf = self.fix_filling(nf)
+                E_mu = self.bisection(self.fix_filling, E_mu, WeissInv, U)
+            nf = self.calc_nf(WeissInv, self.iomega, E_mu, U) # (bz, 1, size)
+            if prinfo: print('<nf>={}'.format(torch.mean(nf).item()))
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, count, size)
             '''4. compute new self-energy'''
             error = torch.linalg.norm(Gimp - Gloc).item()
             if error < 1e-4:
                 if prinfo:
                     print("final error: {}".format(error))
-                    print(torch.round(nf.real.cpu(), decimals=3).numpy())
+                    print(torch.round(nf.cpu(), decimals=3).numpy())
                 return SE  # (bz, count, size)
             else:
                 if error < min_error:
