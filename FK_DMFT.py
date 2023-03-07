@@ -109,7 +109,7 @@ class DMFT:
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, count, size)
             '''4. compute new self-energy'''
             error = torch.linalg.norm(Gimp - Gloc).item()
-            if error < 1e-4:
+            if error < 1e-8:
                 if prinfo:
                     print("final error: {}".format(error))
                     print(torch.round(nf.cpu(), decimals=3).numpy())
@@ -143,14 +143,14 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    T = 0.01
+    T = 0.14
     count = 50
     momentum = 0.5
     maxEpoch = 2000
     scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
 
     '''2D test'''
-    U = torch.tensor([1., 3.], device=device)
+    U = torch.tensor([4.], device=device)
     mu = U / 2.
     E_mu = torch.zeros(len(U), device=device) - mu  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
