@@ -2,12 +2,14 @@ import torch
 
 
 class DMFT:
-    def __init__(self, T=1e-2, count=100, iota=0., momentum=0., maxEpoch=100, device=torch.device('cpu'), double=True):
+    def __init__(self, T=1e-2, count=100, iota=0., momentum=0., maxEpoch=100, filling=None, device=torch.device('cpu'),
+                 double=True):
         self.T = T
         self.count = count * 2
         self.iota = iota
         self.momentum = momentum
         self.MAXEPOCH = maxEpoch
+        self.filling = filling
         self.iomega = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(1) + 1) * torch.pi * self.T  # (count, 1)
         if double: self.iomega = self.iomega.type(torch.complex128)
 
@@ -24,6 +26,9 @@ class DMFT:
     def calc_nf(self, WeissInv, iomega, E_mu, U):
         z = torch.sum(torch.log(1 - U / WeissInv) * torch.exp(iomega * self.iota), dim=1) - E_mu / self.T # (bz, size)
         return self.nan_to_num(torch.sigmoid(z)).unsqueeze(1)  # (bz, 1, size)
+
+    def fix_filling(self, nf):
+        return nf / torch.mean(nf, dim=-1, keepdim=True) * self.filling
 
     def fourier(self, SE, iomega, tau):
         return -torch.sum(SE * torch.exp(iomega * tau), dim=1, keepdim=True).real / self.count / self.T / torch.pi  # (bz, 1, size)
@@ -55,15 +60,15 @@ class DMFT:
             WeissInv = Gloc.pow(-1) + SE  # (bz, count, size)
             '''3. compute G_{imp}'''
             nf = self.calc_nf(WeissInv, self.iomega, E_mu, U) # (bz, 1, size)
-            # nf = 0.5 * torch.ones((bz, 1, size), device=device, dtype=dtype)
-            # nf = self.checkerboard(int(size ** (0.5)), device, dtype).expand((bz, 1, size))
+            if self.filling is not None:
+                nf = self.fix_filling(nf)
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, count, size)
             '''4. compute new self-energy'''
             error = torch.linalg.norm(Gimp - Gloc).item()
             if error < 1e-4:
                 if prinfo:
                     print("final error: {}".format(error))
-                    # print(torch.round(nf.real.cpu(), decimals=3).numpy())
+                    print(torch.round(nf.real.cpu(), decimals=3).numpy())
                 return SE  # (bz, count, size)
             else:
                 if error < min_error:
@@ -89,7 +94,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 16  # size = L ** 2
+    L = 12  # size = L ** 2
     save = True
     show = True
 
@@ -98,7 +103,15 @@ if __name__ == "__main__":
     count = 50
     momentum = 0.5
     maxEpoch = 2000
-    scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, device=device)
+    scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
+
+    '''2D test'''
+    U = torch.tensor([1., 3.], device=device)
+    mu = U / 2.
+    E_mu = torch.zeros(len(U), device=device) - mu  # E - mu  (-0.066)
+    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
+    SE = scf(H0, E_mu, U, prinfo=True)  # (bz, 1, size)
+    exit(0)
 
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
@@ -113,7 +126,7 @@ if __name__ == "__main__":
     '''construct Hamiltonians'''
     U = torch.linspace(1.5, 2.5, 50)
     mu = U / 2.
-    E_mu = -0.06 * torch.ones(len(U))  # E - mu  (-0.066)
+    E_mu = torch.zeros(len(U)) - mu  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
 
     '''compute self-energy by DMFT'''
