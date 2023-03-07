@@ -138,8 +138,8 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    T = 0.14
-    count = 50
+    T = 0.1306
+    count = 20
     momentum = 0.5
     maxEpoch = 2000
     scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
