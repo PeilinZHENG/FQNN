@@ -125,12 +125,7 @@ class DMFT:
 
 
 if __name__ == "__main__":
-    from FK_rgfnn import Network
     from FK_Data import Ham
-    from utils import mymkdir, myceil
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from torch.nn.functional import softmax
     import os, mkl
     os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -156,6 +151,12 @@ if __name__ == "__main__":
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
     SE = scf(H0, E_mu, U, prinfo=True)  # (bz, 1, size)
     exit(0)
+
+    from FK_rgfnn import Network
+    from utils import mymkdir, myceil
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from torch.nn.functional import softmax
 
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
