@@ -139,7 +139,7 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    T = 0.21
+    T = 0.20
     count = 20
     momentum = 0.5
     maxEpoch = 2000
@@ -148,10 +148,9 @@ if __name__ == "__main__":
     '''2D test'''
     U = torch.tensor([4.], device=device)
     mu = U / 2.
-    E_mu = torch.zeros(len(U), device=device) - mu  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
     t = time.time()
-    SE = scf(H0, U, E_mu, prinfo=True)  # (bz, 1, size)
+    SE = scf(H0, U, prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     exit(0)
 
