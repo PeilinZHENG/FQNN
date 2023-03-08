@@ -2,14 +2,16 @@ import torch
 
 
 class DMFT:
-    def __init__(self, T=1e-2, count=100, iota=0., momentum=0., maxEpoch=100, filling=None, device=torch.device('cpu'),
-                 double=True):
+    def __init__(self, T=1e-2, count=100, iota=0., momentum=0., maxEpoch=100, filling=None, tol_sc=1e-8, tol_bi=1e-6,
+                 device=torch.device('cpu'), double=True):
         self.T = T
         self.count = count * 2
         self.iota = iota
         self.momentum = momentum
         self.MAXEPOCH = maxEpoch
         self.filling = filling
+        self.tol_sc = tol_sc
+        self.tol_bi = tol_bi
         self.iomega = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(1) + 1) * torch.pi * self.T  # (count, 1)
         if double: self.iomega = self.iomega.type(torch.complex128)
 
@@ -58,18 +60,18 @@ class DMFT:
                         b[i], fb[i] = a[i], fa[i]
                         a[i] = a[i] - mingap
                         fa[i] = fun(a[i:i+1], WeissInv[i:i+1], U[i:i+1])
-        index = torch.nonzero(torch.abs(fa) < 1e-6, as_tuple=True)
+        index = torch.nonzero(torch.abs(fa) < self.tol_bi, as_tuple=True)
         if len(index[0]) > 0: b[index] = a[index]
-        index = torch.nonzero(torch.abs(fb) < 1e-6, as_tuple=True)
+        index = torch.nonzero(torch.abs(fb) < self.tol_bi, as_tuple=True)
         if len(index[0]) > 0: a[index] = b[index]
         while True:
             c = (a + b) / 2
             fc = fun(c, WeissInv, U)
-            index = torch.nonzero(torch.abs(fc) < 1e-6, as_tuple=True)
+            index = torch.nonzero(torch.abs(fc) < self.tol_bi, as_tuple=True)
             if len(index[0]) > 0:
                 a[index] = c[index]
                 b[index] = c[index]
-            if torch.linalg.norm((b - a) / 2) < 1e-6:
+            if torch.linalg.norm((b - a) / 2) < self.tol_bi:
                 return (b + a) / 2
             index = torch.nonzero(fc * fun(a, WeissInv, U) < 0, as_tuple=True)
             b[index] = c[index]
@@ -87,8 +89,9 @@ class DMFT:
             H_omega = torch.diag_embed(self.iomega.expand(-1, size)) - H0  # (bz, count, size, size)
         '''0. initialize self-energy'''
         if SEinit is None:
-            SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
-            # SE = 0. + 1. * torch.randn((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
+            # SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
+            SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype) # (bz, count, size)
+            # SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, count, size)
         else:
             SE = SEinit
         min_error = 1e10
@@ -109,7 +112,7 @@ class DMFT:
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, count, size)
             '''4. compute new self-energy'''
             error = torch.linalg.norm(Gimp - Gloc).item()
-            if error < 1e-8:
+            if error < self.tol_sc:
                 if prinfo:
                     print("final error: {}".format(error))
                     print(torch.round(nf.cpu(), decimals=3).numpy())
@@ -138,7 +141,7 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    T = 0.1306
+    T = 0.18
     count = 20
     momentum = 0.5
     maxEpoch = 2000
