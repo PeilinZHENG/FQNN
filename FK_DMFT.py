@@ -15,15 +15,9 @@ class DMFT:
         self.iomega = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(1) + 1) * torch.pi * self.T  # (count, 1)
         if double: self.iomega = self.iomega.type(torch.complex128)
 
-    def nansum(self, x, dim, keepdim=False):
-        return torch.nansum(x.real, dim=dim, keepdim=keepdim) + 1j * torch.nansum(x.imag, dim=dim, keepdim=keepdim)
-
-    def nan_to_num(self, x, nan=0.):
-        return torch.nan_to_num(x.real, nan=nan) + 1j * torch.nan_to_num(x.imag, nan=nan)
-
     def calc_nf(self, WeissInv, iomega, E_mu, U):
         z = torch.sum(torch.log(1 - U / WeissInv) * torch.exp(iomega * self.iota), dim=1) - E_mu / self.T # (bz, size)
-        return self.nan_to_num(torch.sigmoid(z)).unsqueeze(1).real  # (bz, 1, size)
+        return torch.nan_to_num(torch.sigmoid(z).real, nan=0.).unsqueeze(1)  # (bz, 1, size)
 
     def fix_filling(self, E_mu, WeissInv, U):
         nf = self.calc_nf(WeissInv, self.iomega, E_mu, U)
@@ -137,7 +131,7 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    T = 0.15
+    T = 0.2
     count = 20
     momentum = 0.5
     maxEpoch = 2000
