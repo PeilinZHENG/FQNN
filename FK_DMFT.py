@@ -19,6 +19,10 @@ class DMFT:
         z = torch.sum(torch.log(1 - U / WeissInv) * torch.exp(iomega * self.iota), dim=1) - E_mu / self.T # (bz, size)
         return torch.nan_to_num(torch.sigmoid(z).real, nan=0.).unsqueeze(1)  # (bz, 1, size)
 
+    def calc_nf_(self, WeissInv, iomega, E_mu, U):
+        z = torch.prod((1 - U / WeissInv).pow(torch.exp(iomega * self.iota)), dim=1).pow(-1) * torch.exp(E_mu / self.T) # (bz, size)
+        return torch.nan_to_num((1 + z).pow(-1).real, nan=0.).unsqueeze(1)  # (bz, 1, size)
+
     def fix_filling(self, E_mu, WeissInv, U):
         nf = self.calc_nf(WeissInv, self.iomega, E_mu, U)
         return torch.mean(nf, dim=-1) - self.filling  # (bz, 1)
@@ -123,7 +127,7 @@ class DMFT:
 
 if __name__ == "__main__":
     from FK_Data import Ham
-    import os, mkl
+    import os, mkl, time
     os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     mkl.set_num_threads(8)
@@ -135,7 +139,7 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    T = 0.2
+    T = 0.21
     count = 20
     momentum = 0.5
     maxEpoch = 2000
@@ -146,7 +150,9 @@ if __name__ == "__main__":
     mu = U / 2.
     E_mu = torch.zeros(len(U), device=device) - mu  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
+    t = time.time()
     SE = scf(H0, U, E_mu, prinfo=True)  # (bz, 1, size)
+    print(time.time() - t)
     exit(0)
 
     from FK_rgfnn import Network
