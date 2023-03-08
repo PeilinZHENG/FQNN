@@ -15,10 +15,6 @@ class DMFT:
         self.iomega = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(1) + 1) * torch.pi * self.T  # (count, 1)
         if double: self.iomega = self.iomega.type(torch.complex128)
 
-    def checkerboard(self, L, device, dtype):
-        line = torch.tensor([0., 1.], device=device, dtype=dtype).tile(int(L / 2))
-        return torch.cat((line, 1. - line)).tile(int(L / 2))
-
     def nansum(self, x, dim, keepdim=False):
         return torch.nansum(x.real, dim=dim, keepdim=keepdim) + 1j * torch.nansum(x.imag, dim=dim, keepdim=keepdim)
 
@@ -141,14 +137,14 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    T = 0.18
+    T = 0.10
     count = 20
     momentum = 0.5
     maxEpoch = 2000
     scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
 
     '''2D test'''
-    U = torch.tensor([4.], device=device)
+    U = torch.tensor([1.5, 2.5], device=device)
     mu = U / 2.
     E_mu = torch.zeros(len(U), device=device) - mu  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
