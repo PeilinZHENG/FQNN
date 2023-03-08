@@ -76,11 +76,11 @@ class DMFT:
 
     @torch.no_grad()
     def __call__(self, H0, E_mu, U, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
+        device, dtype = self.iomega.device, self.iomega.dtype
         bz, _, _, size = H0.shape
-        H0 = H0.tile(1, self.count, 1, 1) # (bz, count, size, size)
-        device, dtype = H0.device, H0.dtype
-        E_mu = E_mu.unsqueeze(1).type(dtype)  # (bz, 1)
-        U = U[:, None, None].type(dtype) # (bz, 1, 1)
+        H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, count, size, size)
+        E_mu = E_mu.unsqueeze(1).to(device=device, dtype=dtype)  # (bz, 1)
+        U = U[:, None, None].to(device=device, dtype=dtype) # (bz, 1, 1)
         if model is None:
             H_omega = torch.diag_embed(self.iomega.expand(-1, size)) - H0  # (bz, count, size, size)
         '''0. initialize self-energy'''
