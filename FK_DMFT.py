@@ -86,8 +86,8 @@ class DMFT:
         '''0. initialize self-energy'''
         if SEinit is None:
             # SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
-            SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype) # (bz, count, size)
-            # SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, count, size)
+            # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype) # (bz, count, size)
+            SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, count, size)
         else:
             SE = SEinit
         min_error = 1e10
@@ -137,14 +137,14 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    T = 0.10
+    T = 0.15
     count = 20
     momentum = 0.5
     maxEpoch = 2000
     scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
 
     '''2D test'''
-    U = torch.tensor([1.5, 2.5], device=device)
+    U = torch.tensor([4.], device=device)
     mu = U / 2.
     E_mu = torch.zeros(len(U), device=device) - mu  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
