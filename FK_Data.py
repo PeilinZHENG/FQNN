@@ -35,16 +35,15 @@ def Ham(L, mu):
 def genData(amount, L):
     torch.manual_seed(int(time.time() * 1e16) % (2 ** 31 - 1))
     Hs, labels = [], []
-    E_mu = -0.06
     for i in range(int(amount / 2)):
         U = torch.rand(1) + 2.5
         H = Ham(L, U / 2)
         Hs.append(H)
-        labels.append([U.item(), E_mu, 0.])
+        labels.append([U.item(), 0.])
         U = torch.rand(1) + 0.5
         H = Ham(L, U / 2)
         Hs.append(H)
-        labels.append([U.item(), E_mu, 1.])
+        labels.append([U.item(), 1.])
     Hs = torch.stack(Hs, dim=0)        # (amount, L ** 2, L ** 2)
     labels = torch.tensor(labels)      # (amount, 3)
     return Hs, labels
@@ -75,7 +74,7 @@ if __name__ == "__main__":
     pool.close()
     pool.join()
     Hs = torch.cat(Hs, dim=0).unsqueeze(1)     # (amount * processors, 1, L ** 2, L ** 2)
-    labels = torch.cat(labels, dim=0)          # (amount * processors, 3)
+    labels = torch.cat(labels, dim=0)          # (amount * processors, 2)
 
     delta_t = time.time() - t
     print(delta_t, '\n', L, Hs.shape, labels.shape)
@@ -85,4 +84,4 @@ if __name__ == "__main__":
 
     # save
     torch.save(Hs, '{}/dataset.pt'.format(path))           # (amount * processors, 1, L ** 2, L ** 2)
-    torch.save(labels, '{}/labels.pt'.format(path))        # (amount * processors, 3)
+    torch.save(labels, '{}/labels.pt'.format(path))        # (amount * processors, 2)
