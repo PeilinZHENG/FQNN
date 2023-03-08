@@ -207,7 +207,8 @@ def main(args):
 def main_worker(args):
     global best_acc1
     print("Use GPU: {} for training".format(args.gpu))
-    scf = DMFT(args.Tem, args.count, args.iota, args.momentum, args.maxEpoch, args.device, args.double)
+    scf = DMFT(args.Tem, args.count, args.iota, args.momentum, args.maxEpoch, filling=0.5, device=args.device,
+               double=args.double)
 
     # create model
     Net = args.Net[:args.Net.index('_')]
@@ -389,7 +390,7 @@ def train(train_loader, model, criterion, optimizer, scf, epoch, args):
         E_mu = E_mu.to(args.device, non_blocking=True)
         target = target.to(args.device, non_blocking=True)
 
-        H = H0 + torch.diag_embed(scf(H0, E_mu, U, model))  # (bz, count, size, size)
+        H = H0 + torch.diag_embed(scf(H0, U, E_mu, model))  # (bz, count, size, size)
 
         # compute output
         output = model(H)
@@ -533,7 +534,7 @@ def validate(val_loader, model, criterion, scf, args):
             E_mu = E_mu.to(args.device, non_blocking=True)
             target = target.to(args.device, non_blocking=True)
 
-            H = H0 + torch.diag_embed(scf(H0, E_mu, U, model))  # (bz, count, size, size)
+            H = H0 + torch.diag_embed(scf(H0, U, E_mu, model))  # (bz, count, size, size)
 
             # compute output
             output = model(H)

@@ -69,11 +69,15 @@ class DMFT:
             a = c
 
     @torch.no_grad()
-    def __call__(self, H0, E_mu, U, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
+    def __call__(self, H0, U, E_mu=None, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
         device, dtype = self.iomega.device, self.iomega.dtype
         bz, _, _, size = H0.shape
+        if E_mu is None:
+            assert self.filling is not None
+            E_mu = torch.zeros((bz, 1), device=device, dtype=dtype)  # (bz, 1)
+        else:
+            E_mu = E_mu.unsqueeze(1).to(device=device, dtype=dtype)  # (bz, 1)
         H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, count, size, size)
-        E_mu = E_mu.unsqueeze(1).to(device=device, dtype=dtype)  # (bz, 1)
         U = U[:, None, None].to(device=device, dtype=dtype) # (bz, 1, 1)
         if model is None:
             H_omega = torch.diag_embed(self.iomega.expand(-1, size)) - H0  # (bz, count, size, size)
@@ -142,7 +146,7 @@ if __name__ == "__main__":
     mu = U / 2.
     E_mu = torch.zeros(len(U), device=device) - mu  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
-    SE = scf(H0, E_mu, U, prinfo=True)  # (bz, 1, size)
+    SE = scf(H0, U, E_mu, prinfo=True)  # (bz, 1, size)
     exit(0)
 
     from FK_rgfnn import Network
@@ -174,7 +178,7 @@ if __name__ == "__main__":
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
         E_mu_batch = E_mu[i * bz:(i + 1) * bz].to(device)
         U_batch = U[i * bz:(i + 1) * bz].to(device)
-        SE = scf(H0_batch, E_mu_batch, U_batch, model, prinfo=True if i == 0 else False)  # (bz, 1, size)
+        SE = scf(H0_batch, U_batch, E_mu_batch, model, prinfo=True if i == 0 else False)  # (bz, 1, size)
         '''compute phase diagram'''
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)
