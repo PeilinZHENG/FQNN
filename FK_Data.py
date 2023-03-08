@@ -40,11 +40,11 @@ def genData(amount, L):
         U = torch.rand(1) + 2.5
         H = Ham(L, U / 2)
         Hs.append(H)
-        labels.append([E_mu, U.item(), 0.])
+        labels.append([U.item(), E_mu, 0.])
         U = torch.rand(1) + 0.5
         H = Ham(L, U / 2)
         Hs.append(H)
-        labels.append([E_mu, U.item(), 1.])
+        labels.append([U.item(), E_mu, 1.])
     Hs = torch.stack(Hs, dim=0)        # (amount, L ** 2, L ** 2)
     labels = torch.tensor(labels)      # (amount, 3)
     return Hs, labels

@@ -383,7 +383,7 @@ def train(train_loader, model, criterion, optimizer, scf, epoch, args):
     model.train()
 
     end = time.time()
-    for i, (H0, E_mu, U, target) in enumerate(train_loader):
+    for i, (H0, U, E_mu, target) in enumerate(train_loader):
         bz = H0.size(0)
         H0 = H0.to(args.device, non_blocking=True)
         U = U.to(args.device, non_blocking=True)
@@ -527,7 +527,7 @@ def validate(val_loader, model, criterion, scf, args):
 
     with torch.no_grad():
         end = time.time()
-        for i, (H0, E_mu, U, target) in enumerate(val_loader):
+        for i, (H0, U, E_mu, target) in enumerate(val_loader):
             bz = H0.size(0)
             H0 = H0.to(args.device, non_blocking=True)
             U = U.to(args.device, non_blocking=True)
