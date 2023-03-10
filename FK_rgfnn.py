@@ -48,8 +48,8 @@ class AbstractSC(Abstract):
         if count == 1:
             g = g.imag.squeeze(1)
         else:
-            T = self.z[int(count / 2)].imag.item() / torch.pi
-            g = -torch.sum(g * torch.exp(self.z.unsqueeze(-1) / T / 2.), dim=1).real / count / T / torch.pi
+            n = int(count / 2)
+            g = torch.sum(g * (-1) ** torch.arange(-n, n, device=g.device), dim=1).real * 1j / torch.pi
         g = torch.diagonal(g, dim1=-2, dim2=-1).squeeze(-1)
         return g * self.scale
 
