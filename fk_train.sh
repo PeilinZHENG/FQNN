@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=4
+gpu=2
 threads=8
 
 # Parameters of DMFT
@@ -12,7 +12,7 @@ tol_sc=1e-6
 tol_bi=1e-6
 
 # Parameters of training
-L=12
+L=14
 data=FK_${L}
 Net=Naive_0
 input_size=$(($L*$L))
