@@ -326,7 +326,8 @@ def main_worker(args):
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
                               pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=256, shuffle=False, num_workers=args.workers, pin_memory=True)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
+                            pin_memory=True)
     print('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}'.format(
         len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
     args.f.write('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}\n\n'.format(

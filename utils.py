@@ -164,8 +164,8 @@ class LoadFKHamData(Dataset):
         self.labels = labels
 
     def __getitem__(self, index):
-        U, label = self.labels[index]
-        return self.dataload[index], U, label.long()
+        U, T, label = self.labels[index]
+        return self.dataload[index], U, T, label.long()
 
     def __len__(self):
         return self.dataload.shape[0]

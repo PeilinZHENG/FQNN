@@ -2,9 +2,8 @@ import torch
 
 
 class DMFT:
-    def __init__(self, T=1e-2, count=100, iota=0., momentum=0., maxEpoch=100, filling=None, tol_sc=1e-8, tol_bi=1e-6,
+    def __init__(self, count=100, iota=0., momentum=0., maxEpoch=100, filling=None, tol_sc=1e-8, tol_bi=1e-6,
                  device=torch.device('cpu'), double=True):
-        self.T = T
         self.count = count * 2
         self.iota = iota
         self.momentum = momentum
@@ -12,79 +11,83 @@ class DMFT:
         self.filling = filling
         self.tol_sc = tol_sc
         self.tol_bi = tol_bi
-        self.iomega = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(1) + 1) * torch.pi * self.T  # (count, 1)
-        if double: self.iomega = self.iomega.type(torch.complex128)
+        self.iomega0 = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(0) + 1) * torch.pi  # (1, count)
+        if double: self.iomega0 = self.iomega0.type(torch.complex128)
 
-    def calc_nf(self, WeissInv, iomega, E_mu, U):
-        z = torch.sum(torch.log(1 - U / WeissInv) * torch.exp(iomega * self.iota), dim=1) - E_mu / self.T # (bz, size)
+    def calc_nf(self, WeissInv, T, iomega, U, E_mu):
+        z = torch.sum(torch.log(1 - U / WeissInv) * torch.exp(iomega * self.iota), dim=1) - E_mu / T # (bz, size)
         return torch.nan_to_num(torch.sigmoid(z).real, nan=0.).unsqueeze(1)  # (bz, 1, size)
 
-    def calc_nf_(self, WeissInv, iomega, E_mu, U):
-        z = torch.prod((1 - U / WeissInv).pow(torch.exp(iomega * self.iota)), dim=1).pow(-1) * torch.exp(E_mu / self.T) # (bz, size)
+    def calc_nf_(self, WeissInv, T, iomega, U, E_mu):
+        z = torch.prod((1 - U / WeissInv).pow(torch.exp(iomega * self.iota)), dim=1).pow(-1) * torch.exp(E_mu / T) # (bz, size)
         return torch.nan_to_num((1 + z).pow(-1).real, nan=0.).unsqueeze(1)  # (bz, 1, size)
 
-    def fix_filling(self, E_mu, WeissInv, U):
-        nf = self.calc_nf(WeissInv, self.iomega, E_mu, U)
+    def fix_filling(self, WeissInv, T, iomega, U, E_mu):
+        nf = self.calc_nf(WeissInv, T, iomega, U, E_mu)
         return torch.mean(nf, dim=-1) - self.filling  # (bz, 1)
 
-    def bisection(self, fun, a, WeissInv, U, mingap=5.):
-        fa = fun(a, WeissInv, U)
+    def bisection(self, fun, WeissInv, T, iomega, U, a, mingap=5.):
+        fa = fun(WeissInv, T, iomega, U, a)
         b = a + mingap
-        fb = fun(b, WeissInv, U)
+        fb = fun(WeissInv, T, iomega, U, b)
         for i in torch.nonzero(fa * fb > 0, as_tuple=True)[0]:
             if fa[i] > 0:
                 if fa[i] < fb[i]:
                     while fa[i] > 0:
                         b[i], fb[i] = a[i], fa[i]
                         a[i] = a[i] - mingap
-                        fa[i] = fun(a[i:i+1], WeissInv[i:i+1], U[i:i+1])
+                        fa[i] = fun(WeissInv[i:i+1], T[i:i+1], iomega[i:i+1], U[i:i+1], a[i:i+1])
                 else:
                     while fb[i] > 0:
                         a[i], fa[i] = b[i], fb[i]
                         b[i] = b[i] + mingap
-                        fb[i] = fun(b[i:i+1], WeissInv[i:i+1], U[i:i+1])
+                        fb[i] = fun(WeissInv[i:i+1], T[i:i+1], iomega[i:i+1], U[i:i+1], b[i:i+1])
             else:
                 if fa[i] < fb[i]:
                     while fb[i] < 0:
                         a[i], fa[i] = b[i], fb[i]
                         b[i] = b[i] + mingap
-                        fb[i] = fun(b[i:i+1], WeissInv[i:i+1], U[i:i+1])
+                        fb[i] = fun(WeissInv[i:i+1], T[i:i+1], iomega[i:i+1], U[i:i+1], b[i:i+1])
                 else:
                     while fa[i] < 0:
                         b[i], fb[i] = a[i], fa[i]
                         a[i] = a[i] - mingap
-                        fa[i] = fun(a[i:i+1], WeissInv[i:i+1], U[i:i+1])
+                        fa[i] = fun(WeissInv[i:i+1], T[i:i+1], iomega[i:i+1], U[i:i+1], a[i:i+1])
         index = torch.nonzero(torch.abs(fa) < self.tol_bi, as_tuple=True)
         if len(index[0]) > 0: b[index] = a[index]
         index = torch.nonzero(torch.abs(fb) < self.tol_bi, as_tuple=True)
         if len(index[0]) > 0: a[index] = b[index]
         while True:
             c = (a + b) / 2
-            fc = fun(c, WeissInv, U)
+            fc = fun(WeissInv, T, iomega, U, c)
             index = torch.nonzero(torch.abs(fc) < self.tol_bi, as_tuple=True)
             if len(index[0]) > 0:
                 a[index] = c[index]
                 b[index] = c[index]
             if torch.linalg.norm((b - a) / 2) < self.tol_bi:
-                return (b + a) / 2
-            index = torch.nonzero(fc * fun(a, WeissInv, U) < 0, as_tuple=True)
+                return (b + a) / 2   # (bz, 1)
+            index = torch.nonzero(fc * fun(WeissInv, T, iomega, U, a) < 0, as_tuple=True)
             b[index] = c[index]
             c[index] = a[index]
             a = c
 
     @torch.no_grad()
-    def __call__(self, H0, U, E_mu=None, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
-        device, dtype = self.iomega.device, self.iomega.dtype
+    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
+        device, dtype = self.iomega0.device, self.iomega0.dtype
         bz, _, _, size = H0.shape
         if E_mu is None:
             assert self.filling is not None
             E_mu = torch.zeros((bz, 1), device=device, dtype=dtype)  # (bz, 1)
         else:
-            E_mu = E_mu.unsqueeze(1).to(device=device, dtype=dtype)  # (bz, 1)
+            E_mu = E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
+        T = T.unsqueeze(-1).to(device=device, dtype=dtype) # (bz, 1)
+        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1) #(bz, count, 1)
         H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, count, size, size)
         U = U[:, None, None].to(device=device, dtype=dtype) # (bz, 1, 1)
         if model is None:
-            H_omega = torch.diag_embed(self.iomega.expand(-1, size)) - H0  # (bz, count, size, size)
+            H_omega = torch.diag_embed(iomega.expand(bz, self.count, size)) - H0  # (bz, count, size, size)
+        else:
+            model.z = iomega
         '''0. initialize self-energy'''
         if SEinit is None:
             # SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
@@ -104,8 +107,8 @@ class DMFT:
             WeissInv = Gloc.pow(-1) + SE  # (bz, count, size)
             '''3. compute G_{imp}'''
             if self.filling is not None:
-                E_mu = self.bisection(self.fix_filling, E_mu, WeissInv, U)
-            nf = self.calc_nf(WeissInv, self.iomega, E_mu, U) # (bz, 1, size)
+                E_mu = self.bisection(self.fix_filling, WeissInv, T, iomega, U, E_mu)
+            nf = self.calc_nf(WeissInv, T, iomega, U, E_mu) # (bz, 1, size)
             if prinfo: print('<nf>={}'.format(torch.mean(nf).item()))
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, count, size)
             '''4. compute new self-energy'''
@@ -139,18 +142,18 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    T = 0.20
     count = 20
     momentum = 0.5
     maxEpoch = 2000
-    scf = DMFT(T, count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
+    scf = DMFT(count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
 
     '''2D test'''
-    U = torch.tensor([4.], device=device)
+    T = torch.tensor([0.15, 0.25], device=device)
+    U = torch.tensor([4., 4.], device=device)
     mu = U / 2.
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
     t = time.time()
-    SE = scf(H0, U, prinfo=True)  # (bz, 1, size)
+    SE = scf(T, H0, U, prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     exit(0)
 

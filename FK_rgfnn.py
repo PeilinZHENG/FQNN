@@ -36,10 +36,12 @@ class AbstractSC(Abstract):
     def z_wrapper(self, z, size):
         if z.dim() == 0:
             return z * torch.eye(size, device=z.device)
-        elif z.dim() == 1:
-            return torch.diag_embed(z.expand(size, 1, -1).transpose(0, 2))
-        elif z.dim() == 2:
-            return torch.diag_embed(z.expand(-1, size))
+        elif z.dim() == 1:  # (bz,)
+            return torch.diag_embed(z[:, None, None].tile(1, 1, size))
+        elif z.dim() == 2:  # (count, 1)
+            return torch.diag_embed(z.tile(1, size))
+        elif z.dim() == 3:  # (bz, count, 1)
+            return torch.diag_embed(z.tile(1, 1, size))
         else:
             raise RuntimeError('Wrong dim of z')
 

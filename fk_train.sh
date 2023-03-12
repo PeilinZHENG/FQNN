@@ -3,16 +3,16 @@ gpu=4
 threads=8
 
 # Parameters of DMFT
-Tem=1e-2
-count=50
+count=20
 iota=0
 momentum=0.5
 maxEpoch=300
+filling=0.5
 
 # Parameters of training
-L=16
+L=12
 data=FK_${L}
-Net=Naive_1
+Net=Naive_0
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
@@ -38,20 +38,20 @@ ss=20
 drop=0
 disor=0
 
-epochs=3
+epochs=10
 workers=8
-batchsize=16
-print_freq=20
+batchsize=128
+print_freq=7
 save_freq=1
 seed=0
 
-category=STRUCTURE
+
 preNet=Naive_h_4-
 checkpointID=checkpoint_0100
 
 # paths
-pretrained="models/${data}/${category}/${preNet}/model_best.pth.tar"
-resume="models/${data}/${category}/${preNet}/${checkpointID}.pth.tar"
+pretrained="models/${data}/${preNet}/model_best.pth.tar"
+resume="models/${data}/${preNet}/${checkpointID}.pth.tar"
 
 source activate
 #source /opt/anaconda3/etc/profile.d/conda.sh
@@ -60,7 +60,7 @@ conda activate pytorch
 
 python FK_Train.py \
   -t $threads -j $workers -b $batchsize -p $print_freq -s $save_freq --epochs $epochs --data $data \
-  --gpu $gpu --Tem $Tem --count $count --iota $iota --momentum $momentum --maxEpoch $maxEpoch \
+  --gpu $gpu --count $count --iota $iota --momentum $momentum --maxEpoch $maxEpoch --filling $filling\
   --opt $opt --loss $loss --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss \
   --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm --seed $seed \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \

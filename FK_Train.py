@@ -100,8 +100,6 @@ parser.add_argument('--lars', action='store_true',
                     help='Use LARS')
 
 # DMFT configs:
-parser.add_argument('--Tem', default=1e-3, type=float,
-                    help='Temperature')
 parser.add_argument('--count', default=100, type=int,
                     help='n count')
 parser.add_argument('--iota', default=1e-3, type=float,
@@ -110,6 +108,8 @@ parser.add_argument('--momentum', default=0., type=float,
                     help='momentum')
 parser.add_argument('--maxEpoch', default=100, type=int,
                     help='max epoch')
+parser.add_argument('--filling', default=0.5, type=float,
+                    help='Filling')
 
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
@@ -144,8 +144,8 @@ def main(args):
         args.input_size, args.embedding_size, args.hidden_size, args.output_size))
     args.f.write('z={}\thermi={}\tdiago={}\trestr={}\tscale={}\treal={}\tdouble={}\n'.format(
         None, args.hermi, args.diago, args.restr, args.scale, args.real, args.double))
-    args.f.write('T={}\tcount={}\tiota={}\tmomentum={}\tmaxEpoch={}\n'.format(
-        args.Tem, args.count, args.iota, args.momentum, args.maxEpoch))
+    args.f.write('count={}\tiota={}\tmomentum={}\tmaxEpoch={}\tfilling={}\n'.format(
+        args.count, args.iota, args.momentum, args.maxEpoch, args.filling))
     args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\tgradsnorm={}\n'.format(
         args.data, args.entanglement, args.delta, args.tc, args.gradsnorm))
     args.f.write('lossfunc={}\topt={}\tlr={}\tbetas={}\twd={}\tlars={}\tdevice={}\n'.format(
@@ -207,12 +207,11 @@ def main(args):
 def main_worker(args):
     global best_acc1
     print("Use GPU: {} for training".format(args.gpu))
-    scf = DMFT(args.Tem, args.count, args.iota, args.momentum, args.maxEpoch, filling=0.5, device=args.device,
-               double=args.double)
+    scf = DMFT(args.count, args.iota, args.momentum, args.maxEpoch, args.filling, device=args.device, double=args.double)
 
     # create model
     Net = args.Net[:args.Net.index('_')]
-    model = Network(Net, args.input_size, args.output_size, args.embedding_size, args.hidden_size, scf.iomega, args.hermi,
+    model = Network(Net, args.input_size, args.output_size, args.embedding_size, args.hidden_size, None, args.hermi,
                     args.diago, args.restr, args.real, args.init_bound, args.scale, args.drop, args.disor, args.double)
     print(model)
     args.f.write('{}\n\n'.format(model))
@@ -383,13 +382,14 @@ def train(train_loader, model, criterion, optimizer, scf, epoch, args):
     model.train()
 
     end = time.time()
-    for i, (H0, U, target) in enumerate(train_loader):
+    for i, (H0, U, T, target) in enumerate(train_loader):
         bz = H0.size(0)
         H0 = H0.to(args.device, non_blocking=True)
         U = U.to(args.device, non_blocking=True)
+        T = T.to(args.device, non_blocking=True)
         target = target.to(args.device, non_blocking=True)
 
-        H = H0 + torch.diag_embed(scf(H0, U, model))  # (bz, count, size, size)
+        H = H0 + torch.diag_embed(scf(T, H0, U, model=model))  # (bz, count, size, size)
 
         # compute output
         output = model(H)
@@ -526,13 +526,14 @@ def validate(val_loader, model, criterion, scf, args):
 
     with torch.no_grad():
         end = time.time()
-        for i, (H0, U, target) in enumerate(val_loader):
+        for i, (H0, U, T, target) in enumerate(val_loader):
             bz = H0.size(0)
             H0 = H0.to(args.device, non_blocking=True)
             U = U.to(args.device, non_blocking=True)
+            T = T.to(args.device, non_blocking=True)
             target = target.to(args.device, non_blocking=True)
 
-            H = H0 + torch.diag_embed(scf(H0, U, model=model))  # (bz, count, size, size)
+            H = H0 + torch.diag_embed(scf(T, H0, U, model=model))  # (bz, count, size, size)
 
             # compute output
             output = model(H)
