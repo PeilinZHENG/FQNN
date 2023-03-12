@@ -1,4 +1,5 @@
 import torch
+from utils import mymkdir
 
 
 class DMFT:
@@ -71,6 +72,12 @@ class DMFT:
             c[index] = a[index]
             a = c
 
+    def saveOP(self, nf, T, U, error, L):
+        op = torch.round((nf[:, 0, 0] - nf[:, 0, 1]).abs().cpu(), decimals=3).numpy()
+        print('order parameter:\n', op)
+        mymkdir(f'results/FK_{L}')
+        np.savez(f'results/FK_{L}/OP.npz', OP=op, T=T.cpu().numpy(), U=U.cpu().numpy(), error=error)
+
     @torch.no_grad()
     def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
         device, dtype = self.iomega0.device, self.iomega0.dtype
@@ -97,6 +104,7 @@ class DMFT:
             SE = SEinit
         min_error = 1e10
         best_SE = None
+        if prinfo: best_nf = None
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             if model is None:
@@ -116,15 +124,18 @@ class DMFT:
             if error < self.tol_sc:
                 if prinfo:
                     print("final error: {}".format(error))
-                    print(torch.round(nf.cpu(), decimals=3).numpy())
+                    self.saveOP(nf, T[:, 0].real, U[:, 0, 0].real, error, int(size ** 0.5))
                 return SE  # (bz, count, size)
             else:
                 if error < min_error:
                     min_error = error
                     best_SE = SE
+                    if prinfo: best_nf = nf
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
                 if prinfo:
                     print("{} loop error: {}".format(l, error))
+        if prinfo:
+            self.saveOP(best_nf, T[:, 0].real, U[:, 0, 0].real, min_error, int(size ** 0.5))
         return best_SE
 
 
@@ -158,7 +169,7 @@ if __name__ == "__main__":
     # exit(0)
 
     from FK_rgfnn import Network
-    from utils import mymkdir, myceil
+    from utils import myceil
     import numpy as np
     import matplotlib.pyplot as plt
     from torch.nn.functional import softmax
