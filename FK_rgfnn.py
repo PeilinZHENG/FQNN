@@ -46,13 +46,13 @@ class AbstractSC(Abstract):
             raise RuntimeError('Wrong dim of z')
 
     def postproc(self, g):
+        g = torch.diagonal(g, dim1=-2, dim2=-1).imag
         count = g.shape[1]
         if count == 1:
-            g = g.imag.squeeze(1)
+            g = g.squeeze(1).squeeze(-1)
         else:
             n = int(count / 2)
-            g = torch.sum(g * (-1) ** torch.arange(-n, n, device=g.device), dim=1).real * 1j / torch.pi
-        g = torch.diagonal(g, dim1=-2, dim2=-1).squeeze(-1)
+            g = -torch.sum(g * ((-1) ** torch.arange(-n, n, device=g.device).unsqueeze(-1)), dim=1) / torch.pi
         return g * self.scale
 
     def FQNN(self, g):

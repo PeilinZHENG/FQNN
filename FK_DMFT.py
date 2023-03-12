@@ -138,7 +138,7 @@ if __name__ == "__main__":
     torch.manual_seed(0)
 
     L = 12  # size = L ** 2
-    save = True
+    save = False
     show = True
 
     '''construct DMFT'''
@@ -148,14 +148,14 @@ if __name__ == "__main__":
     scf = DMFT(count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
 
     '''2D test'''
-    T = torch.tensor([0.15, 0.25], device=device)
-    U = torch.tensor([4., 4.], device=device)
-    mu = U / 2.
-    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
-    t = time.time()
-    SE = scf(T, H0, U, prinfo=True)  # (bz, 1, size)
-    print(time.time() - t)
-    exit(0)
+    # T = torch.tensor([0.15, 0.25], device=device)
+    # U = torch.tensor([4., 4.], device=device)
+    # mu = U / 2.
+    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
+    # t = time.time()
+    # SE = scf(T, H0, U, prinfo=True)  # (bz, 1, size)
+    # print(time.time() - t)
+    # exit(0)
 
     from FK_rgfnn import Network
     from utils import mymkdir, myceil
@@ -167,16 +167,16 @@ if __name__ == "__main__":
     data = 'FK_{}'.format(L)
     Net = 'Naive_1'
     model_path = 'models/{}/{}'.format(data, Net)
-    model = Network('Naive', L ** 2, 2, 100, 64, scf.iomega, double=True)
-    checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
-    model.load_state_dict(checkpoint['state_dict'], strict=False)
+    model = Network('Naive', L ** 2, 2, 100, 64, None, double=True)
+    # checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
+    # model.load_state_dict(checkpoint['state_dict'], strict=False)
     model = model.to(device)
     model.eval()
 
     '''construct Hamiltonians'''
     U = torch.linspace(1.5, 2.5, 50)
+    T = 0.1 * torch.ones(len(U))
     mu = U / 2.
-    E_mu = torch.zeros(len(U)) - mu  # E - mu  (-0.066)
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
 
     '''compute self-energy by DMFT'''
@@ -184,9 +184,9 @@ if __name__ == "__main__":
     P = []
     for i in range(myceil(len(U) / bz)):
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
-        E_mu_batch = E_mu[i * bz:(i + 1) * bz].to(device)
+        T_batch = T[i * bz:(i + 1) * bz].to(device)
         U_batch = U[i * bz:(i + 1) * bz].to(device)
-        SE = scf(H0_batch, U_batch, E_mu_batch, model, prinfo=True if i == 0 else False)  # (bz, 1, size)
+        SE = scf(T_batch, H0_batch, U_batch, model=model, prinfo=True if i == 0 else False)  # (bz, 1, size)
         '''compute phase diagram'''
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)

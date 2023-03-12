@@ -108,6 +108,10 @@ parser.add_argument('--maxEpoch', default=100, type=int,
                     help='max epoch')
 parser.add_argument('--filling', default=0.5, type=float,
                     help='Filling')
+parser.add_argument('--tol_sc', default=1e-8, type=float,
+                    help='tolerance of self-consistent')
+parser.add_argument('--tol_bi', default=1e-6, type=float,
+                    help='tolerance of bisection')
 
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
@@ -142,8 +146,8 @@ def main(args):
         args.input_size, args.embedding_size, args.hidden_size, args.output_size))
     args.f.write('z={}\thermi={}\tdiago={}\trestr={}\tscale={}\treal={}\tdouble={}\n'.format(
         None, args.hermi, args.diago, args.restr, args.scale, args.real, args.double))
-    args.f.write('count={}\tiota={}\tmomentum={}\tmaxEpoch={}\tfilling={}\n'.format(
-        args.count, args.iota, args.momentum, args.maxEpoch, args.filling))
+    args.f.write('count={}\tiota={}\tmomentum={}\tmaxEpoch={}\tfilling={}\ttol_sc={}\ttol_bi={}\n'.format(
+        args.count, args.iota, args.momentum, args.maxEpoch, args.filling, args.tol_sc, args.tol_bi))
     args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\tgradsnorm={}\n'.format(
         args.data, args.entanglement, args.delta, args.tc, args.gradsnorm))
     args.f.write('lossfunc={}\topt={}\tlr={}\tbetas={}\twd={}\tlars={}\tdevice={}\n'.format(
@@ -205,7 +209,8 @@ def main(args):
 def main_worker(args):
     global best_acc1
     print("Use GPU: {} for training".format(args.gpu))
-    scf = DMFT(args.count, args.iota, args.momentum, args.maxEpoch, args.filling, device=args.device, double=args.double)
+    scf = DMFT(args.count, args.iota, args.momentum, args.maxEpoch, args.filling, args.tol_sc, args.tol_bi, args.device,
+               args.double)
 
     # create model
     Net = args.Net[:args.Net.index('_')]
