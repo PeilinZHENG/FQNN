@@ -76,7 +76,7 @@ class DMFT:
         op = torch.round((nf[:, 0, 0] - nf[:, 0, 1]).abs().cpu(), decimals=3).numpy()
         print('order parameter:\n', op)
         mymkdir(f'results/FK_{L}')
-        torch.save({'OP': op, 'T': T.cpu(), 'U': U.cpu(), 'error': error}, f'results/FK_{L}/OP.npz')
+        torch.save({'OP': op, 'T': T.cpu(), 'U': U.cpu(), 'error': error}, f'results/FK_{L}/OP.pt')
 
     @torch.no_grad()
     def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
