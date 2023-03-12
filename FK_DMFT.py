@@ -179,8 +179,8 @@ if __name__ == "__main__":
     Net = 'Naive_1'
     model_path = 'models/{}/{}'.format(data, Net)
     model = Network('Naive', L ** 2, 2, 100, 64, None, double=True)
-    # checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
-    # model.load_state_dict(checkpoint['state_dict'], strict=False)
+    checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
+    model.load_state_dict(checkpoint['state_dict'], strict=False)
     model = model.to(device)
     model.eval()
 
