@@ -76,7 +76,7 @@ class DMFT:
         op = torch.round((nf[:, 0, 0] - nf[:, 0, 1]).abs().cpu(), decimals=3).numpy()
         print('order parameter:\n', op)
         mymkdir(f'results/FK_{L}')
-        np.savez(f'results/FK_{L}/OP.npz', OP=op, T=T.cpu().numpy(), U=U.cpu().numpy(), error=error)
+        torch.save({'OP': op, 'T': T.cpu(), 'U': U.cpu(), 'error': error}, f'results/FK_{L}/OP.npz')
 
     @torch.no_grad()
     def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
@@ -142,7 +142,7 @@ class DMFT:
 if __name__ == "__main__":
     from FK_Data import Ham
     import os, mkl, time
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     mkl.set_num_threads(8)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -159,14 +159,14 @@ if __name__ == "__main__":
     scf = DMFT(count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
 
     '''2D test'''
-    # T = torch.tensor([0.15, 0.25], device=device)
-    # U = torch.tensor([4., 4.], device=device)
-    # mu = U / 2.
-    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
-    # t = time.time()
-    # SE = scf(T, H0, U, prinfo=True)  # (bz, 1, size)
-    # print(time.time() - t)
-    # exit(0)
+    T = torch.tensor([0.15, 0.25], device=device)
+    U = torch.tensor([4., 4.], device=device)
+    mu = U / 2.
+    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
+    t = time.time()
+    SE = scf(T, H0, U, prinfo=True)  # (bz, 1, size)
+    print(time.time() - t)
+    exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil
