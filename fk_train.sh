@@ -42,8 +42,8 @@ disor=0
 
 epochs=10
 workers=8
-batchsize=128
-print_freq=7
+batchsize=100
+print_freq=10
 save_freq=1
 seed=0
 
