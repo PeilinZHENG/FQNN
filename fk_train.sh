@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=2
+gpu=3
 threads=8
 
 # Parameters of DMFT
@@ -12,7 +12,7 @@ tol_sc=1e-6
 tol_bi=1e-6
 
 # Parameters of training
-L=14
+L=10
 data=FK_${L}
 Net=Naive_0
 input_size=$(($L*$L))
@@ -42,8 +42,8 @@ disor=0
 
 epochs=10
 workers=8
-batchsize=100
-print_freq=10
+batchsize=256
+print_freq=5
 save_freq=1
 seed=0
 
