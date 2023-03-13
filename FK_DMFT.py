@@ -136,7 +136,7 @@ class DMFT:
                     print("{} loop error: {}".format(l, error))
         if prinfo:
             self.saveOP(best_nf, T[:, 0].real, U[:, 0, 0].real, min_error, int(size ** 0.5))
-        return best_SE
+        return best_SE # (bz, count, size)
 
 
 if __name__ == "__main__":

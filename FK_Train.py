@@ -98,6 +98,8 @@ parser.add_argument('--lars', action='store_true',
                     help='Use LARS')
 
 # DMFT configs:
+parser.add_argument('--SC2D', action='store_true',
+                    help='self-consist at 2D ')
 parser.add_argument('--count', default=100, type=int,
                     help='n count')
 parser.add_argument('--iota', default=1e-3, type=float,
@@ -292,8 +294,14 @@ def main_worker(args):
     if args.Net.endswith('-'):
         trainlabels = 1 - trainlabels
         vallabels = 1 - vallabels
-    train_dataset = LoadFKHamData(traindata, trainlabels)
-    val_dataset = LoadFKHamData(valdata, vallabels)
+    if args.SC2D:
+        trainSE = torch.load('datasets/{}/train/SE.pt'.format(args.data))
+        valSE = torch.load('datasets/{}/test/SE.pt'.format(args.data))
+        train_dataset = LoadFKHamDatawithSE(traindata, trainlabels, trainSE)
+        val_dataset = LoadFKHamDatawithSE(valdata, vallabels, valSE)
+    else:
+        train_dataset = LoadFKHamData(traindata, trainlabels)
+        val_dataset = LoadFKHamData(valdata, vallabels)
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
                               pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
@@ -385,28 +393,30 @@ def train(train_loader, model, criterion, optimizer, scf, epoch, args):
     model.train()
 
     end = time.time()
-    for i, (H0, U, T, target) in enumerate(train_loader):
+    for i, (H0, target) in enumerate(train_loader):
         bz = H0.size(0)
         H0 = H0.to(args.device, non_blocking=True)
-        U = U.to(args.device, non_blocking=True)
-        T = T.to(args.device, non_blocking=True)
-        target = target.to(args.device, non_blocking=True)
-
-        H = H0 + torch.diag_embed(scf(T, H0, U, model=model))  # (bz, count, size, size)
+        if args.SC2D:
+            target = target.to(args.device, non_blocking=True)
+        else:
+            U = target[:, 0].to(args.device, non_blocking=True)
+            T = target[:, 1].to(args.device, non_blocking=True)
+            target = target[:, 2].to(args.device, non_blocking=True)
+            H0 = H0 + torch.diag_embed(scf(T, H0, U, model=model))  # (bz, count, size, size)
 
         # compute output
-        output = model(H)
+        output = model(H0)
         # print(output[0])
         output = LossPrepro(output, args.loss, args.scale)
         loss = criterion(output, target)
 
         if args.entanglement and i % args.print_freq == 0:
             if args.tc is None:
-                He = H.cpu()
+                He = H0.cpu()
             else:
                 index = torch.nonzero(target == args.tc, as_tuple=True)
                 if len(index[0]) > 0:
-                    He = H[index].cpu()
+                    He = H0[index].cpu()
             try:
                 Ia, Ib = computeI(model, args.input_size, He, args.index, args.entanglement, args.delta,
                                   double=args.double, full=args.full)
@@ -529,17 +539,19 @@ def validate(val_loader, model, criterion, scf, args):
 
     with torch.no_grad():
         end = time.time()
-        for i, (H0, U, T, target) in enumerate(val_loader):
+        for i, (H0, target) in enumerate(val_loader):
             bz = H0.size(0)
             H0 = H0.to(args.device, non_blocking=True)
-            U = U.to(args.device, non_blocking=True)
-            T = T.to(args.device, non_blocking=True)
-            target = target.to(args.device, non_blocking=True)
-
-            H = H0 + torch.diag_embed(scf(T, H0, U, model=model))  # (bz, count, size, size)
+            if args.SC2D:
+                target = target.to(args.device, non_blocking=True)
+            else:
+                U = target[:, 0].to(args.device, non_blocking=True)
+                T = target[:, 1].to(args.device, non_blocking=True)
+                target = target[:, 2].long().to(args.device, non_blocking=True)
+                H0 = H0 + torch.diag_embed(scf(T, H0, U, model=model))  # (bz, count, size, size)
 
             # compute output
-            output = model(H)
+            output = model(H0)
             output = LossPrepro(output, args.loss, args.scale)
             loss = criterion(output, target)
 
