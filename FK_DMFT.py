@@ -189,13 +189,13 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
-    U = torch.linspace(1., 3., 100)
-    T = 0.1 * torch.ones(len(U))
+    U = torch.linspace(1., 4., 150)
+    T = 0.15 * torch.ones(len(U))
     mu = U / 2.
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
 
     '''compute self-energy by DMFT'''
-    bz = 100
+    bz = 75
     P = []
     for i in range(myceil(len(U) / bz)):
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
@@ -224,7 +224,7 @@ if __name__ == "__main__":
         mymkdir(path)
         path = '{}/{}'.format(path, Net)
         mymkdir(path)
-        plt.savefig('{}/PD.jpg'.format(path))
+        plt.savefig('{}/PD_{:.3f}.jpg'.format(path, T[0].item()))
     if show: plt.show()
     plt.close()
-    if save: np.save('{}/{}.npy'.format(path, 'PD'), np.stack((U, P), axis=0))
+    if save: np.save('{}/PD_{:.3f}.npy'.format(path, T[0].item()), np.stack((U, P), axis=0))
