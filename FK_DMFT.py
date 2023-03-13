@@ -142,31 +142,35 @@ class DMFT:
 if __name__ == "__main__":
     from FK_Data import Ham
     import os, mkl, time
-    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '5'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     mkl.set_num_threads(8)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 12  # size = L ** 2
-    save = False
+    L = 14  # size = L ** 2
+    save = True
     show = True
 
     '''construct DMFT'''
     count = 20
+    iota = 0.
     momentum = 0.5
-    maxEpoch = 2000
-    scf = DMFT(count, momentum=momentum, maxEpoch=maxEpoch, filling=0.5, device=device)
+    maxEpoch = 5000
+    filling = 0.5
+    tol_sc = 1e-6
+    tol_bi = 1e-6
+    scf = DMFT(count, iota, momentum, maxEpoch, filling, tol_sc, tol_bi, device)
 
     '''2D test'''
-    T = torch.tensor([0.15, 0.25], device=device)
-    U = torch.tensor([4., 4.], device=device)
-    mu = U / 2.
-    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
-    t = time.time()
-    SE = scf(T, H0, U, prinfo=True)  # (bz, 1, size)
-    print(time.time() - t)
-    exit(0)
+    # T = torch.tensor([0.15, 0.25], device=device)
+    # U = torch.tensor([4., 4.], device=device)
+    # mu = U / 2.
+    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
+    # t = time.time()
+    # SE = scf(T, H0, U, prinfo=True)  # (bz, 1, size)
+    # print(time.time() - t)
+    # exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil
@@ -176,7 +180,7 @@ if __name__ == "__main__":
 
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
-    Net = 'Naive_1'
+    Net = 'Naive_0'
     model_path = 'models/{}/{}'.format(data, Net)
     model = Network('Naive', L ** 2, 2, 100, 64, None, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
@@ -185,13 +189,13 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
-    U = torch.linspace(1.5, 2.5, 50)
+    U = torch.linspace(1., 3., 100)
     T = 0.1 * torch.ones(len(U))
     mu = U / 2.
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
 
     '''compute self-energy by DMFT'''
-    bz = 20
+    bz = 100
     P = []
     for i in range(myceil(len(U) / bz)):
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
@@ -208,12 +212,13 @@ if __name__ == "__main__":
     '''plot phase diagram'''
     plt.figure()
     plt.axis([U[0], U[-1], 0., 1.])
-    plt.plot([2., 2.], [0., 1.], 'bo--', linewidth=0.5, markersize=0.1)
-    plt.plot([2.14, 2.14], [0., 1.], 'ko--', linewidth=0.5, markersize=0.1)
+    # plt.plot([2., 2.], [0., 1.], 'bo--', linewidth=0.5, markersize=0.1)
+    # plt.plot([2.14, 2.14], [0., 1.], 'ko--', linewidth=0.5, markersize=0.1)
+    plt.plot([U[0], U[-1]], [0.5, 0.5], 'ko--', linewidth=0.5, markersize=0.1)
     plt.scatter(U, P, s=20, c='r', marker='o')
     plt.xlabel('U')
     plt.ylabel('P')
-    plt.title('Metal VS Insulator')
+    plt.title('Metal VS Insulator / T={:.3f}, L={}'.format(T[0].item(), L))
     if save:
         path = 'results/{}'.format(data)
         mymkdir(path)
