@@ -312,6 +312,11 @@ def main_worker(args):
         len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
     args.f.flush()
 
+    if not args.SC2D:
+        trainSEinit = 0.01 * (2. * torch.rand((len(train_dataset), scf.count, args.input_size), device=args.device).
+                              type(scf.iomega0.dtype) - 1.)
+        valSEinit = 0.01 * (2. * torch.rand((len(val_dataset), scf.count, args.input_size), device=args.device).
+                            type(scf.iomega0.dtype) - 1.)
     for epoch in range(args.start_epoch, args.epochs):
         # scheduler the learning rate
         if args.lars:
@@ -320,10 +325,10 @@ def main_worker(args):
             scheduler.step()
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, scf, epoch, args)
+        train(train_loader, model, criterion, optimizer, scf, epoch, args, SEinit=trainSEinit)
 
         # evaluate on validation set
-        acc1 = validate(val_loader, model, criterion, scf, args)
+        acc1 = validate(val_loader, model, criterion, scf, args, SEinit=valSEinit)
 
         # remember best acc@1 and save checkpoint
         is_best = acc1 >= best_acc1
@@ -346,7 +351,7 @@ def main_worker(args):
             }, False, '{}/checkpoint_{:04d}.pth.tar'.format(args.path, epoch), args)
 
 
-def train(train_loader, model, criterion, optimizer, scf, epoch, args):
+def train(train_loader, model, criterion, optimizer, scf, epoch, args, SEinit=None):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
@@ -402,7 +407,7 @@ def train(train_loader, model, criterion, optimizer, scf, epoch, args):
             U = target[:, 0].to(args.device, non_blocking=True)
             T = target[:, 1].to(args.device, non_blocking=True)
             target = target[:, 2].to(args.device, non_blocking=True)
-            H0 = H0 + torch.diag_embed(scf(T, H0, U, model=model))  # (bz, count, size, size)
+            H0 = H0 + torch.diag_embed(scf(T, H0, U, model=model, SEinit=SEinit[i * bz:(i + 1) * bz]))  # (bz, count, size, size)
 
         # compute output
         output = model(H0)
@@ -525,7 +530,7 @@ def train(train_loader, model, criterion, optimizer, scf, epoch, args):
                 args.Ib_cd_record.append(0.)
 
 
-def validate(val_loader, model, criterion, scf, args):
+def validate(val_loader, model, criterion, scf, args, SEinit=None):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
@@ -548,7 +553,7 @@ def validate(val_loader, model, criterion, scf, args):
                 U = target[:, 0].to(args.device, non_blocking=True)
                 T = target[:, 1].to(args.device, non_blocking=True)
                 target = target[:, 2].long().to(args.device, non_blocking=True)
-                H0 = H0 + torch.diag_embed(scf(T, H0, U, model=model))  # (bz, count, size, size)
+                H0 = H0 + torch.diag_embed(scf(T, H0, U, model=model, SEinit=SEinit[i * bz:(i + 1) * bz]))  # (bz, count, size, size)
 
             # compute output
             output = model(H0)

@@ -101,7 +101,7 @@ class DMFT:
             # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype) # (bz, count, size)
             SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, count, size)
         else:
-            SE = SEinit
+            SE = SEinit.to(device=device, dtype=dtype)
         min_error = 1e10
         best_SE = None
         if prinfo: best_nf = None
