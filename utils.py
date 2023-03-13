@@ -2,13 +2,15 @@ import os
 import shutil
 import math
 import re
+import random
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
 import torch.nn.functional as F
 from torch import optim
 from torch.optim import lr_scheduler
 import torchvision.transforms as transforms
+from typing import Sized, Iterator
 
 
 def Optimizer(opt, params, lr=1e-3, weight_decay=0., momentum=0., betas=(0.9, 0.999), max_iter=20):
@@ -181,6 +183,30 @@ class LoadFKHamDatawithSE(Dataset):
 
     def __len__(self):
         return self.dataload.shape[0]
+
+
+class MySequentialSampler(Sampler[int]):
+    data_source: Sized
+    def __init__(self, data_source: Sized, num_data=None) -> None:
+        self.data_source = data_source
+        self.my_list = list(range(len(self.data_source)))
+        random.shuffle(self.my_list)
+        if num_data is None:
+            self.num_data = len(self.my_list)
+        else:
+            self.num_data = num_data
+            self.my_list = self.my_list[:num_data]
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self.my_list)
+
+    def __len__(self) -> int:
+        return self.num_data
+
+    def shuffle(self):
+        self.my_list = list(range(len(self.data_source)))
+        random.shuffle(self.my_list)
+        self.my_list = self.my_list[:self.num_data]
 
 
 def float_or_complex(value):
