@@ -299,13 +299,13 @@ def main_worker(args):
         valSE = torch.load('datasets/{}/test/SE.pt'.format(args.data))
         train_dataset = LoadFKHamDatawithSE(traindata, trainlabels, trainSE)
         val_dataset = LoadFKHamDatawithSE(valdata, vallabels, valSE)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers,
-                                  sampler=CtrlRandomSampler(train_dataset), pin_memory=True)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
+                                  pin_memory=True)
     else:
         train_dataset = LoadFKHamData(traindata, trainlabels)
         val_dataset = LoadFKHamData(valdata, vallabels)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
-                                  pin_memory=True)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers,
+                                  sampler=CtrlRandomSampler(train_dataset), pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
                             pin_memory=True)
     print('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}'.format(
