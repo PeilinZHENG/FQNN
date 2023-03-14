@@ -1,12 +1,12 @@
 ## Parameters of GPU
-gpu=3
+gpu=4
 threads=8
 
 # Parameters of DMFT
 count=20
 iota=0
 momentum=0.5
-maxEpoch=300
+maxEpoch=100
 filling=0.5
 tol_sc=1e-6
 tol_bi=1e-6
@@ -14,7 +14,7 @@ tol_bi=1e-6
 # Parameters of training
 L=10
 data=FK_${L}
-Net=Naive_0
+Net=Naive_1
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
@@ -41,7 +41,7 @@ drop=0
 disor=0
 
 epochs=10
-workers=8             # if SC2D == False: {workers == 0: random shuffle, workers > 0: ctrl random shuffle}
+workers=0             # if SC2D == False: {workers == 0: random shuffle, workers > 0: ctrl random shuffle}
 batchsize=256
 print_freq=5
 save_freq=1
