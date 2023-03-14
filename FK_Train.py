@@ -317,10 +317,9 @@ def main_worker(args):
         len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
     args.f.flush()
 
-    if not args.SC2D and args.workers > 0:
-        trainSEinit, valSEinit = [None] * len(train_loader), [None] * len(val_loader)
-    else:
-        trainSEinit, valSEinit = None, None
+    trainSEinit = [None] * len(train_loader) if not args.SC2D and args.workers > 0 else None
+    valSEinit = None if args.SC2D else [None] * len(val_loader)
+
     for epoch in range(args.start_epoch, args.epochs):
         # scheduler the learning rate
         if args.lars:
