@@ -97,10 +97,10 @@ def genData2(amount, L):
 
 
 if __name__ == "__main__":
-    L = 12
+    L = 10
 
-    TYPE = 'train'
-    amount, processors = 200, 50  # total_amount = amount * processors
+    TYPE = 'test'
+    amount, processors = 20, 50  # total_amount = amount * processors
 
     # torch.manual_seed(0)
     # genData2(amount, L)

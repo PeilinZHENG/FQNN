@@ -199,11 +199,6 @@ class CtrlRandomSampler(Sampler[int]):
     def __len__(self) -> int:
         return self.num_data
 
-    def shuffle(self):
-        self.my_list = list(range(len(self.data_source)))
-        random.shuffle(self.my_list)
-        self.my_list = self.my_list[:self.num_data]
-
 
 def float_or_complex(value):
     if value.startswith('_'):
