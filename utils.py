@@ -5,7 +5,8 @@ import re
 import random
 import numpy as np
 import torch
-from torch.utils.data import Dataset, Sampler
+from torch.utils.data import Dataset, Sampler, DataLoader, _utils
+from torch.utils.data.dataloader import _SingleProcessDataLoaderIter
 import torch.nn.functional as F
 from torch import optim
 from torch.optim import lr_scheduler
@@ -198,6 +199,27 @@ class CtrlRandomSampler(Sampler[int]):
 
     def __len__(self) -> int:
         return self.num_data
+
+
+class MyDataLoader(DataLoader):
+    def __init__(self, dataset, batch_size, shuffle, pin_memory):
+        super(MyDataLoader, self).__init__(dataset=dataset, batch_size=batch_size, shuffle=shuffle,
+                                           num_workers=0, pin_memory=pin_memory)
+
+    def _get_iterator(self):
+        return MySingleProcessDataLoaderIter(self)
+
+
+class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
+    def __init__(self, loader):
+        super(MySingleProcessDataLoaderIter, self).__init__(loader)
+
+    def _next_data(self):
+        index = self._next_index()  # may raise StopIteration
+        data = self._dataset_fetcher.fetch(index)  # may raise StopIteration
+        if self._pin_memory:
+            data = _utils.pin_memory.pin_memory(data, self._pin_memory_device)
+        return data, index
 
 
 def float_or_complex(value):
