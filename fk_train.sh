@@ -41,7 +41,7 @@ drop=0
 disor=0
 
 epochs=10
-workers=8
+workers=8             # if SC2D == False: {workers == 0: random shuffle, workers > 0: ctrl random shuffle}
 batchsize=256
 print_freq=5
 save_freq=1

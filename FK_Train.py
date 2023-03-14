@@ -1,12 +1,10 @@
 import argparse
-import random
 import time
 import mkl
 import warnings
 
 import torch.nn as nn
 import torch.optim
-from torch.utils.data import DataLoader
 
 from utils import *
 from FK_rgfnn import Network
@@ -302,10 +300,15 @@ def main_worker(args):
         train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
                                   pin_memory=True)
     else:
-        train_dataset = LoadFKHamData(traindata, trainlabels)
+        if args.workers > 0:
+            train_dataset = LoadFKHamData(traindata, trainlabels)
+            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers,
+                                      sampler=CtrlRandomSampler(train_dataset), pin_memory=True)
+        else:
+            trainSEinit = 0.01 * (2. * torch.rand((len(traindata), scf.count, args.input_size)).type(scf.iomega0.dtype) - 1.)
+            train_dataset = LoadFKHamDatawithSEinit(traindata, trainlabels, trainSEinit)
+            train_loader = MyDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
         val_dataset = LoadFKHamData(valdata, vallabels)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers,
-                                  sampler=CtrlRandomSampler(train_dataset), pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
                             pin_memory=True)
     print('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}'.format(
@@ -314,10 +317,10 @@ def main_worker(args):
         len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
     args.f.flush()
 
-    if args.SC2D:
-        trainSEinit, valSEinit = None, None
-    else:
+    if not args.SC2D and args.workers > 0:
         trainSEinit, valSEinit = [None] * len(train_loader), [None] * len(val_loader)
+    else:
+        trainSEinit, valSEinit = None, None
     for epoch in range(args.start_epoch, args.epochs):
         # scheduler the learning rate
         if args.lars:
@@ -400,16 +403,23 @@ def train(train_loader, model, criterion, optimizer, scf, SEinit, epoch, args):
 
     if not args.SC2D: SEs = []
     end = time.time()
-    for i, (H0, target) in enumerate(train_loader):
-        bz = H0.size(0)
-        H0 = H0.to(args.device, non_blocking=True)
+    for i, pkg in enumerate(train_loader):
         if args.SC2D:
-            target = target.to(args.device, non_blocking=True)
+            H0 = pkg[0].to(args.device, non_blocking=True)
+            target = pkg[1].to(args.device, non_blocking=True)
         else:
-            SE = scf(target[:, 1], H0, target[:, 0], model=model, SEinit=SEinit[i])  # (bz, scf.count, size)
-            SEs.append(SE.cpu())
+            if args.workers > 0:
+                H0 = pkg[0].to(args.device, non_blocking=True)
+                target = pkg[1][:, 2].long().to(args.device, non_blocking=True)
+                SE = scf(pkg[1][:, 1], H0, pkg[1][:, 0], model=model, SEinit=SEinit[i])  # (bz, scf.count, size)
+                SEs.append(SE.cpu())
+            else:
+                H0 = pkg[0][0].to(args.device, non_blocking=True)
+                target = pkg[0][2][:, 2].long().to(args.device, non_blocking=True)
+                SE = scf(pkg[0][2][:, 1], H0, pkg[0][2][:, 0], model=model, SEinit=pkg[0][1])  # (bz, scf.count, size)
+                train_loader.dataset.SEinit[pkg[1]] = SE.cpu()
             H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
-            target = target[:, 2].long().to(args.device, non_blocking=True)
+        bz = H0.size(0)
 
         # compute output
         output = model(H0)
@@ -531,10 +541,10 @@ def train(train_loader, model, criterion, optimizer, scf, SEinit, epoch, args):
                 args.Ibd_record.append(0.)
                 args.Ib_cd_record.append(0.)
 
-    if args.SC2D:
-        return None
-    else:
+    if not args.SC2D and args.workers > 0:
         return SEs
+    else:
+        return None
 
 
 def validate(val_loader, model, criterion, scf, SEinit, args):

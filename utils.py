@@ -186,6 +186,19 @@ class LoadFKHamDatawithSE(Dataset):
         return self.dataload.shape[0]
 
 
+class LoadFKHamDatawithSEinit(Dataset):
+    def __init__(self, dataload, labels, SEinit):
+        self.dataload = dataload
+        self.labels = labels
+        self.SEinit = SEinit
+
+    def __getitem__(self, index):
+        return self.dataload[index], self.SEinit[index], self.labels[index]
+
+    def __len__(self):
+        return self.dataload.shape[0]
+
+
 class CtrlRandomSampler(Sampler[int]):
     data_source: Sized
     def __init__(self, data_source: Sized) -> None:

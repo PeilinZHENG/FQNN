@@ -1,12 +1,10 @@
 import argparse
-import random
 import time
 import mkl
 import warnings
 
 import torch.nn as nn
 import torch.optim
-from torch.utils.data import DataLoader
 import torchvision.datasets as datasets
 
 from utils import *
