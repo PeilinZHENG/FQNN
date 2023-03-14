@@ -15,8 +15,8 @@ os.environ ['NUMEXPR_NUM_THREADS'] = '1'
 
 
 L = 10
-TYPE = 'test'
-processors = 10
+TYPE = 'train'
+processors = 40
 
 count = 20
 iota = 0.
