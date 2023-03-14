@@ -299,11 +299,13 @@ def main_worker(args):
         valSE = torch.load('datasets/{}/test/SE.pt'.format(args.data))
         train_dataset = LoadFKHamDatawithSE(traindata, trainlabels, trainSE)
         val_dataset = LoadFKHamDatawithSE(valdata, vallabels, valSE)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers,
+                                  sampler=CtrlRandomSampler(train_dataset), pin_memory=True)
     else:
         train_dataset = LoadFKHamData(traindata, trainlabels)
         val_dataset = LoadFKHamData(valdata, vallabels)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
-                              pin_memory=True)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
+                                  pin_memory=True)
     val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
                             pin_memory=True)
     print('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}'.format(
@@ -312,11 +314,10 @@ def main_worker(args):
         len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
     args.f.flush()
 
-    if not args.SC2D:
-        trainSEinit = 0.01 * (2. * torch.rand((len(train_dataset), scf.count, args.input_size), device=args.device).
-                              type(scf.iomega0.dtype) - 1.)
-        valSEinit = 0.01 * (2. * torch.rand((len(val_dataset), scf.count, args.input_size), device=args.device).
-                            type(scf.iomega0.dtype) - 1.)
+    if args.SC2D:
+        trainSEinit, valSEinit = None, None
+    else:
+        trainSEinit, valSEinit = [None] * len(train_loader), [None] * len(val_loader)
     for epoch in range(args.start_epoch, args.epochs):
         # scheduler the learning rate
         if args.lars:
@@ -325,10 +326,10 @@ def main_worker(args):
             scheduler.step()
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, scf, epoch, args, SEinit=trainSEinit)
+        trainSEinit = train(train_loader, model, criterion, optimizer, scf, trainSEinit, epoch, args)
 
         # evaluate on validation set
-        acc1 = validate(val_loader, model, criterion, scf, args, SEinit=valSEinit)
+        acc1, valSEinit = validate(val_loader, model, criterion, scf, valSEinit, args)
 
         # remember best acc@1 and save checkpoint
         is_best = acc1 >= best_acc1
@@ -351,7 +352,7 @@ def main_worker(args):
             }, False, '{}/checkpoint_{:04d}.pth.tar'.format(args.path, epoch), args)
 
 
-def train(train_loader, model, criterion, optimizer, scf, epoch, args, SEinit=None):
+def train(train_loader, model, criterion, optimizer, scf, SEinit, epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
@@ -397,6 +398,7 @@ def train(train_loader, model, criterion, optimizer, scf, epoch, args, SEinit=No
     # switch to train mode
     model.train()
 
+    if not args.SC2D: SEs = []
     end = time.time()
     for i, (H0, target) in enumerate(train_loader):
         bz = H0.size(0)
@@ -404,10 +406,10 @@ def train(train_loader, model, criterion, optimizer, scf, epoch, args, SEinit=No
         if args.SC2D:
             target = target.to(args.device, non_blocking=True)
         else:
-            U = target[:, 0].to(args.device, non_blocking=True)
-            T = target[:, 1].to(args.device, non_blocking=True)
-            target = target[:, 2].to(args.device, non_blocking=True)
-            H0 = H0 + torch.diag_embed(scf(T, H0, U, model=model, SEinit=SEinit[i * bz:(i + 1) * bz]))  # (bz, count, size, size)
+            SE = scf(target[:, 1], H0, target[:, 0], model=model, SEinit=SEinit[i])  # (bz, scf.count, size)
+            SEs.append(SE.cpu())
+            H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
+            target = target[:, 2].long().to(args.device, non_blocking=True)
 
         # compute output
         output = model(H0)
@@ -529,8 +531,13 @@ def train(train_loader, model, criterion, optimizer, scf, epoch, args, SEinit=No
                 args.Ibd_record.append(0.)
                 args.Ib_cd_record.append(0.)
 
+    if args.SC2D:
+        return None
+    else:
+        return SEs
 
-def validate(val_loader, model, criterion, scf, args, SEinit=None):
+
+def validate(val_loader, model, criterion, scf, SEinit, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
@@ -541,7 +548,7 @@ def validate(val_loader, model, criterion, scf, args, SEinit=None):
 
     # switch to evaluate mode
     model.eval()
-
+    if not args.SC2D: SEs = []
     with torch.no_grad():
         end = time.time()
         for i, (H0, target) in enumerate(val_loader):
@@ -550,10 +557,10 @@ def validate(val_loader, model, criterion, scf, args, SEinit=None):
             if args.SC2D:
                 target = target.to(args.device, non_blocking=True)
             else:
-                U = target[:, 0].to(args.device, non_blocking=True)
-                T = target[:, 1].to(args.device, non_blocking=True)
+                SE = scf(target[:, 1], H0, target[:, 0], model=model, SEinit=SEinit[i]) # (bz, scf.count, size)
+                SEs.append(SE.cpu())
+                H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
                 target = target[:, 2].long().to(args.device, non_blocking=True)
-                H0 = H0 + torch.diag_embed(scf(T, H0, U, model=model, SEinit=SEinit[i * bz:(i + 1) * bz]))  # (bz, count, size, size)
 
             # compute output
             output = model(H0)
@@ -577,8 +584,10 @@ def validate(val_loader, model, criterion, scf, args, SEinit=None):
         args.f.flush()
 
         args.accuracy_record.append(top1.avg)
-
-    return top1.avg
+    if args.SC2D:
+        return top1.avg, None
+    else:
+        return top1.avg, SEs
 
 
 if __name__ == '__main__':

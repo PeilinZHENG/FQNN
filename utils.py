@@ -185,17 +185,13 @@ class LoadFKHamDatawithSE(Dataset):
         return self.dataload.shape[0]
 
 
-class MySequentialSampler(Sampler[int]):
+class CtrlRandomSampler(Sampler[int]):
     data_source: Sized
-    def __init__(self, data_source: Sized, num_data=None) -> None:
+    def __init__(self, data_source: Sized) -> None:
         self.data_source = data_source
         self.my_list = list(range(len(self.data_source)))
         random.shuffle(self.my_list)
-        if num_data is None:
-            self.num_data = len(self.my_list)
-        else:
-            self.num_data = num_data
-            self.my_list = self.my_list[:num_data]
+        self.num_data = len(self.my_list)
 
     def __iter__(self) -> Iterator[int]:
         return iter(self.my_list)
