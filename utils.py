@@ -216,8 +216,7 @@ class CtrlRandomSampler(Sampler[int]):
 
 class MyDataLoader(DataLoader):
     def __init__(self, dataset, batch_size, shuffle, pin_memory):
-        super(MyDataLoader, self).__init__(dataset=dataset, batch_size=batch_size, shuffle=shuffle,
-                                           num_workers=0, pin_memory=pin_memory)
+        super(MyDataLoader, self).__init__(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=pin_memory)
 
     def _get_iterator(self):
         return MySingleProcessDataLoaderIter(self)
