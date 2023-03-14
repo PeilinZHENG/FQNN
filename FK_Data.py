@@ -70,8 +70,8 @@ def genData(amount, L):
 def genData2(amount, L):
     torch.manual_seed(int(time.time() * 1e16) % (2 ** 31 - 1))
     # random phase
-    T_points = [0.15, 0.2, 0.2]  # [T1,T2,T3]
-    U_points = [1.0, 1.0, 2.5]  # [U1,U2,U3]
+    T_points = [0.05, 0.2, 0.2]  # [T1,T2,T3]
+    U_points = [0.5, 0.5, 2.5]  # [U1,U2,U3]
     rd1 = torch.rand(size=[int(amount / 2)])
     rd2 = torch.rand(size=[int(amount / 2)])
     rd2 = torch.sqrt(rd2)
@@ -80,8 +80,8 @@ def genData2(amount, L):
     H_random = Ham2(L, U_random / 2)  # (amount/2,2**L,2**L)
 
     # ordered phase
-    T_points = [0.1, 0.1, 0.15]
-    U_points = [2.5, 4.0, 4.0]
+    T_points = [0.05, 0.05, 0.15]
+    U_points = [1., 5.0, 4.0]
     rd1 = torch.rand(size=[int(amount / 2)])
     rd2 = torch.rand(size=[int(amount / 2)])
     rd2 = torch.sqrt(rd2)
@@ -97,7 +97,7 @@ def genData2(amount, L):
 
 
 if __name__ == "__main__":
-    L = 10
+    L = 12
 
     TYPE = 'train'
     amount, processors = 200, 50  # total_amount = amount * processors

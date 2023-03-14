@@ -12,7 +12,7 @@ class DMFT:
         self.filling = filling
         self.tol_sc = tol_sc
         self.tol_bi = tol_bi
-        self.iomega0 = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(0) + 1) * torch.pi  # (1, count)
+        self.iomega0 = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(0) + 1) * torch.pi  # (1, self.count)
         if double: self.iomega0 = self.iomega0.type(torch.complex128)
 
     def calc_nf(self, WeissInv, T, iomega, U, E_mu):
@@ -88,18 +88,18 @@ class DMFT:
         else:
             E_mu = E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
         T = T.unsqueeze(-1).to(device=device, dtype=dtype) # (bz, 1)
-        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1) #(bz, count, 1)
-        H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, count, size, size)
+        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1) #(bz, self.count, 1)
+        H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, self.count, size, size)
         U = U[:, None, None].to(device=device, dtype=dtype) # (bz, 1, 1)
         if model is None:
-            H_omega = torch.diag_embed(iomega.expand(bz, self.count, size)) - H0  # (bz, count, size, size)
+            H_omega = torch.diag_embed(iomega.expand(bz, self.count, size)) - H0  # (bz, self.count, size, size)
         else:
             model.z = iomega
         '''0. initialize self-energy'''
         if SEinit is None:
-            # SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, count, size)
-            # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype) # (bz, count, size)
-            SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, count, size)
+            # SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, self.count, size)
+            # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype) # (bz, self.count, size)
+            SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, self.count, size)
         else:
             SE = SEinit.to(device=device, dtype=dtype)
         min_error = 1e10
@@ -108,24 +108,24 @@ class DMFT:
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             if model is None:
-                Gloc = torch.diagonal((H_omega - torch.diag_embed(SE)).inverse(), dim1=-2, dim2=-1)  # (bz, count, size)
+                Gloc = torch.diagonal((H_omega - torch.diag_embed(SE)).inverse(), dim1=-2, dim2=-1)  # (bz, self.count, size)
             else:
-                Gloc = model(H0 + torch.diag_embed(SE), selfcons=True)  # (bz, count, size)
+                Gloc = model(H0 + torch.diag_embed(SE), selfcons=True)  # (bz, self.count, size)
             '''2. compute Weiss field \mathcal{G}_0'''
-            WeissInv = Gloc.pow(-1) + SE  # (bz, count, size)
+            WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
             if self.filling is not None:
                 E_mu = self.bisection(self.fix_filling, WeissInv, T, iomega, U, E_mu)
             nf = self.calc_nf(WeissInv, T, iomega, U, E_mu) # (bz, 1, size)
             if prinfo: print('<nf>={}'.format(torch.mean(nf).item()))
-            Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, count, size)
+            Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
             '''4. compute new self-energy'''
             error = torch.linalg.norm(Gimp - Gloc).item()
             if error < self.tol_sc:
                 if prinfo:
                     print("final error: {}".format(error))
                     self.saveOP(nf, T[:, 0].real, U[:, 0, 0].real, error, int(size ** 0.5))
-                return SE  # (bz, count, size)
+                return SE  # (bz, self.count, size)
             else:
                 if error < min_error:
                     min_error = error
@@ -136,7 +136,7 @@ class DMFT:
                     print("{} loop error: {}".format(l, error))
         if prinfo:
             self.saveOP(best_nf, T[:, 0].real, U[:, 0, 0].real, min_error, int(size ** 0.5))
-        return best_SE # (bz, count, size)
+        return best_SE # (bz, self.count, size)
 
 
 if __name__ == "__main__":
@@ -201,7 +201,7 @@ if __name__ == "__main__":
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
         T_batch = T[i * bz:(i + 1) * bz].to(device)
         U_batch = U[i * bz:(i + 1) * bz].to(device)
-        SE = scf(T_batch, H0_batch, U_batch, model=model, prinfo=True if i == 0 else False)  # (bz, 1, size)
+        SE = scf(T_batch, H0_batch, U_batch, model=model, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
         '''compute phase diagram'''
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)

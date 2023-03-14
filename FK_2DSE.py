@@ -1,1 +1,44 @@
+import torch
 from FK_DMFT import DMFT
+import torch.multiprocessing as mp
+from utils import myceil
+import mkl, warnings
+
+warnings.filterwarnings('ignore')
+mkl.set_num_threads(1)
+
+
+L = 12
+TYPE = 'train'
+processors = 50
+
+count = 20
+iota = 0.
+momentum = 0.5
+maxEpoch = 5000
+filling = 0.5
+tol_sc = 1e-6
+tol_bi = 1e-6
+double = True
+
+path = 'datasets/FK_{}/{}'.format(L, TYPE)
+H0 = torch.load('{}/dataset.pt'.format(path))     # (amount, scf.count, L ** 2, L ** 2)
+target = torch.load('{}/labels.pt'.format(path))  # (amount, 3)
+scf = DMFT(count, iota, momentum, maxEpoch, filling, tol_sc, tol_bi, double=double)
+bz = myceil(len(H0) / processors)
+
+
+def computeSE(i):
+    return scf(target[i * bz:(i + 1) * bz, 1], H0[i * bz:(i + 1) * bz], target[i * bz:(i + 1) * bz, 0]) # (bz, scf.count, L ** 2)
+
+
+if __name__ == "__main__":
+    SE = []
+    mp.set_start_method('fork', force=True)
+    pool = mp.Pool(processes=processors)
+    res = pool.map(computeSE, range(processors))
+    for se in res: SE.append(se)
+    pool.close()
+    pool.join()
+    SE = torch.cat(SE, dim=0)
+    torch.save(SE, '{}/SE.pt'.format(path))  # (amount, scf.count, L ** 2)
