@@ -144,8 +144,8 @@ if __name__ == "__main__":
     warnings.filterwarnings('ignore')
 
     threads = 8
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(threads)
-    os.environ['CUDA_LAUNCH_BLOCKING'] = str(threads)
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     os.environ['OMP_NUM_THREADS'] = str(threads)
     os.environ['OPENBLAS_NUM_THREADS'] = str(threads)
     os.environ['MKL_NUM_THREADS'] = str(threads)
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 10  # size = L ** 2
+    L = 12  # size = L ** 2
     save = True
     show = True
 
@@ -188,7 +188,7 @@ if __name__ == "__main__":
 
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
-    Net = 'Naive_0'
+    Net = 'Naive_1'
     model_path = 'models/{}/{}'.format(data, Net)
     model = Network('Naive', L ** 2, 2, 100, 64, None, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
