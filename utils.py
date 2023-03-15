@@ -180,7 +180,7 @@ class LoadFKHamDatawithSE(Dataset):
         self.SE = SE
 
     def __getitem__(self, index):
-        return self.dataload[index] + torch.diag_embed(self.SE[index]), self.labels[index, -1].long()
+        return self.dataload[index] + torch.diag_embed(self.SE[index]), self.labels[index, 1:]
 
     def __len__(self):
         return self.dataload.shape[0]

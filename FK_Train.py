@@ -405,7 +405,8 @@ def train(train_loader, model, criterion, optimizer, scf, SEinit, epoch, args):
     for i, pkg in enumerate(train_loader):
         if args.SC2D:
             H0 = pkg[0].to(args.device, non_blocking=True)
-            target = pkg[1].to(args.device, non_blocking=True)
+            target = pkg[1][:, 1].long().to(args.device, non_blocking=True)
+            model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype) @ scf.iomega0).unsqueeze(-1)
         else:
             if args.workers > 0:
                 H0 = pkg[0].to(args.device, non_blocking=True)
@@ -564,7 +565,8 @@ def validate(val_loader, model, criterion, scf, SEinit, args):
             bz = H0.size(0)
             H0 = H0.to(args.device, non_blocking=True)
             if args.SC2D:
-                target = target.to(args.device, non_blocking=True)
+                model.z = (target[:, :1].to(device=args.device, dtype=scf.iomega0.dtype) @ scf.iomega0).unsqueeze(-1)
+                target = target[:, 1].long().to(args.device, non_blocking=True)
             else:
                 SE = scf(target[:, 1], H0, target[:, 0], model=model, SEinit=SEinit[i]) # (bz, scf.count, size)
                 SEs.append(SE.cpu())
