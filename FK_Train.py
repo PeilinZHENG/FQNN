@@ -299,8 +299,8 @@ def main_worker(args):
         tra_ds = LoadFKHamDatawithSE(traindata, trainlabels, torch.load('datasets/{}/train/SE.pt'.format(args.data)))
         val_ds = LoadFKHamDatawithSE(valdata, vallabels, torch.load('datasets/{}/test/SE.pt'.format(args.data)))
     else:
-        tra_ds = LoadFKHamData(traindata, trainlabels, SEinit(len(traindata), scf, args))
-        val_ds = LoadFKHamData(valdata, vallabels, SEinit(len(valdata), scf, args))
+        tra_ds = LoadFKHamData(traindata, trainlabels, SEinit(len(traindata), scf, args.input_size))
+        val_ds = LoadFKHamData(valdata, vallabels, SEinit(len(valdata), scf, args.input_size))
     tra_ldr = DataLoader(tra_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
     val_ldr = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
     temp = 'tra_ds:{}\ttra_ldr:{}\tval_ds:{}\tval_ldr:{}'.format(len(tra_ds), len(tra_ldr), len(val_ds), len(val_ldr))
@@ -342,8 +342,8 @@ def main_worker(args):
             }, False, '{}/checkpoint_{:04d}.pth.tar'.format(args.path, epoch), args)
 
 
-def SEinit(length, scf, args):
-    return 0.01 * (2. * torch.rand((length, scf.count, args.input_size)).type(scf.iomega0.dtype) - 1.)
+def SEinit(length, scf, size):
+    return 0.01 * (2. * torch.rand((length, scf.count, size)).type(scf.iomega0.dtype) - 1.)
 
 
 def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
