@@ -5,12 +5,12 @@ from utils import myceil
 import mkl, warnings
 warnings.filterwarnings('ignore')
 
-
+# parameters
 L = 10
-TYPE = 'test'
+TYPE = 'train'
 processors = 0
-bz = 50
-
+if processors == 0: bz = 50
+# DMFT configs
 count = 20
 iota = 0.
 momentum = 0.5
