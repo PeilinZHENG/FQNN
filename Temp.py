@@ -23,7 +23,7 @@ class LoadData(Dataset):
         self.SEinit = SEinit
 
     def __getitem__(self, index):
-        return self.dataload[index], self.SEinit[index], self.labels.long()
+        return self.dataload[index], self.SEinit[index], index, self.labels.long()
 
     def __len__(self):
         return self.dataload.shape[0]
@@ -61,13 +61,12 @@ if __name__ == "__main__":
     # sampler = CtrlRandomSampler(train_dataset)
     train_loader = DataLoader(train_dataset, batch_size=bz, shuffle=True, num_workers=0, pin_memory=True)
     for epoch in range(2):
-        for i, (x, se, target) in enumerate(train_loader):
-            print(epoch, i, 'train\n', x, '\n', train_loader.sampler.indices)
+        for i, (x, se, index, target) in enumerate(train_loader):
+            print(epoch, i, 'train\n', x, '\n', index)
             print(se)
 
-            # train_loader.dataset.SEinit[index] = torch.tensor(index).float().unsqueeze(-1).tile(1, 2)
+            train_loader.dataset.SEinit[index] = index.float().unsqueeze(-1).tile(1, 2)
 
-        # train_loader.dataset.dataload = 0.111 * torch.arange(100).unsqueeze(-1).tile(1, 2)
 
     exit(0)
 

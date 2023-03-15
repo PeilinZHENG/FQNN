@@ -213,8 +213,7 @@ def main(args):
 def main_worker(args):
     global best_acc1
     print("Use GPU: {} for training".format(args.gpu))
-    scf = DMFT(args.count, args.iota, args.momentum, args.maxEpoch, args.filling, args.tol_sc, args.tol_bi, args.device,
-               args.double)
+    scf = DMFT(args.count, args.iota, args.momentum, args.maxEpoch, args.filling, args.tol_sc, args.tol_bi, args.device, args.double)
 
     # create model
     Net = args.Net[:args.Net.index('_')]
@@ -297,32 +296,17 @@ def main_worker(args):
         trainlabels = 1 - trainlabels
         vallabels = 1 - vallabels
     if args.SC2D:
-        trainSE = torch.load('datasets/{}/train/SE.pt'.format(args.data))
-        valSE = torch.load('datasets/{}/test/SE.pt'.format(args.data))
-        train_dataset = LoadFKHamDatawithSE(traindata, trainlabels, trainSE)
-        val_dataset = LoadFKHamDatawithSE(valdata, vallabels, valSE)
-        train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
-                                  pin_memory=True)
+        tra_ds = LoadFKHamDatawithSE(traindata, trainlabels, torch.load('datasets/{}/train/SE.pt'.format(args.data)))
+        val_ds = LoadFKHamDatawithSE(valdata, vallabels, torch.load('datasets/{}/test/SE.pt'.format(args.data)))
     else:
-        if args.workers > 0:
-            train_dataset = LoadFKHamData(traindata, trainlabels)
-            train_loader = DataLoader(train_dataset, batch_size=args.batch_size, num_workers=args.workers,
-                                      sampler=CtrlRandomSampler(train_dataset), pin_memory=True)
-        else:
-            trainSEinit = 0.01 * (2. * torch.rand((len(traindata), scf.count, args.input_size)).type(scf.iomega0.dtype) - 1.)
-            train_dataset = LoadFKHamDatawithSEinit(traindata, trainlabels, trainSEinit)
-            train_loader = MyDataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, pin_memory=True)
-        val_dataset = LoadFKHamData(valdata, vallabels)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
-                            pin_memory=True)
-    print('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}'.format(
-        len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
-    args.f.write('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}\n\n'.format(
-        len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
+        tra_ds = LoadFKHamData(traindata, trainlabels, SEinit(len(traindata), scf, args))
+        val_ds = LoadFKHamData(valdata, vallabels, SEinit(len(valdata), scf, args))
+    tra_ldr = DataLoader(tra_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
+    val_ldr = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
+    temp = 'tra_ds:{}\ttra_ldr:{}\tval_ds:{}\tval_ldr:{}'.format(len(tra_ds), len(tra_ldr), len(val_ds), len(val_ldr))
+    print(temp)
+    args.f.write('{}\n\n'.format(temp))
     args.f.flush()
-
-    trainSEinit = [None] * len(train_loader) if not args.SC2D and args.workers > 0 else None
-    valSEinit = None if args.SC2D else [None] * len(val_loader)
 
     for epoch in range(args.start_epoch, args.epochs):
         # scheduler the learning rate
@@ -332,10 +316,10 @@ def main_worker(args):
             scheduler.step()
 
         # train for one epoch
-        trainSEinit = train(train_loader, model, criterion, optimizer, scf, trainSEinit, epoch, args)
+        train(tra_ldr, model, criterion, optimizer, scf, epoch, args)
 
         # evaluate on validation set
-        acc1, valSEinit = validate(val_loader, model, criterion, scf, valSEinit, args)
+        acc1 = validate(val_ldr, model, criterion, scf, args)
 
         # remember best acc@1 and save checkpoint
         is_best = acc1 >= best_acc1
@@ -358,7 +342,11 @@ def main_worker(args):
             }, False, '{}/checkpoint_{:04d}.pth.tar'.format(args.path, epoch), args)
 
 
-def train(train_loader, model, criterion, optimizer, scf, SEinit, epoch, args):
+def SEinit(length, scf, args):
+    return 0.01 * (2. * torch.rand((length, scf.count, args.input_size)).type(scf.iomega0.dtype) - 1.)
+
+
+def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
@@ -399,31 +387,24 @@ def train(train_loader, model, criterion, optimizer, scf, SEinit, epoch, args):
                 items += [Ibcd, Ibc, Ibd, Ib_cd]
             else:
                 items += [Ibc]
-    progress = ProgressMeter(len(train_loader), items, prefix="Epoch: [{}]".format(epoch))
+    progress = ProgressMeter(len(tra_ldr), items, prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
     model.train()
-
-    if not args.SC2D and args.workers > 0: SEs = []
     end = time.time()
-    for i, pkg in enumerate(train_loader):
-        if args.SC2D:
-            H0 = pkg[0].to(args.device, non_blocking=True)
-            target = pkg[1][:, 1].long().to(args.device, non_blocking=True)
-            model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype) @ scf.iomega0).unsqueeze(-1)
-        else:
-            if args.workers > 0:
-                H0 = pkg[0].to(args.device, non_blocking=True)
-                target = pkg[1][:, 2].long().to(args.device, non_blocking=True)
-                SE = scf(pkg[1][:, 1], H0, pkg[1][:, 0], model=model, SEinit=SEinit[i])  # (bz, scf.count, size)
-                SEs.append(SE.cpu())
-            else:
-                H0 = pkg[0][0].to(args.device, non_blocking=True)
-                target = pkg[0][2][:, 2].long().to(args.device, non_blocking=True)
-                SE = scf(pkg[0][2][:, 1], H0, pkg[0][2][:, 0], model=model, SEinit=pkg[0][1])  # (bz, scf.count, size)
-                train_loader.dataset.SEinit[pkg[1]] = SE.cpu()
-            H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
+    for i, pkg in enumerate(tra_ldr):
+        H0 = pkg[0].to(args.device, non_blocking=True)
+        target = pkg[-1][:, -1].long().to(args.device, non_blocking=True)
         bz = H0.size(0)
+        if args.SC2D:
+            model.z = torch.matmul(pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True),
+                                   scf.iomega0).unsqueeze(-1)
+        else:
+            SE = scf(pkg[-1][:, 1].to(args.device, non_blocking=True), H0,
+                     pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
+                     SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
+            tra_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
+            H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
 
         # compute output
         output = model(H0)
@@ -545,37 +526,33 @@ def train(train_loader, model, criterion, optimizer, scf, SEinit, epoch, args):
                 args.Ibd_record.append(0.)
                 args.Ib_cd_record.append(0.)
 
-    if not args.SC2D and args.workers > 0:
-        return SEs
-    else:
-        return None
 
-
-def validate(val_loader, model, criterion, scf, SEinit, args):
+def validate(val_ldr, model, criterion, scf, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     progress = ProgressMeter(
-        len(val_loader),
+        len(val_ldr),
         [batch_time, losses, top1],
         prefix='Test: ')
 
     # switch to evaluate mode
     model.eval()
-    if not args.SC2D: SEs = []
     with torch.no_grad():
         end = time.time()
-        for i, (H0, target) in enumerate(val_loader):
+        for i, pkg in enumerate(val_ldr):
+            H0 = pkg[0].to(args.device, non_blocking=True)
+            target = pkg[-1][:, -1].long().to(args.device, non_blocking=True)
             bz = H0.size(0)
-            H0 = H0.to(args.device, non_blocking=True)
             if args.SC2D:
-                model.z = (target[:, :1].to(device=args.device, dtype=scf.iomega0.dtype) @ scf.iomega0).unsqueeze(-1)
-                target = target[:, 1].long().to(args.device, non_blocking=True)
+                model.z = torch.matmul(pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True),
+                                       scf.iomega0).unsqueeze(-1)
             else:
-                SE = scf(target[:, 1], H0, target[:, 0], model=model, SEinit=SEinit[i]) # (bz, scf.count, size)
-                SEs.append(SE.cpu())
+                SE = scf(pkg[-1][:, 1].to(args.device, non_blocking=True), H0,
+                         pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
+                         SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
+                val_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
                 H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
-                target = target[:, 2].long().to(args.device, non_blocking=True)
 
             # compute output
             output = model(H0)
@@ -599,10 +576,8 @@ def validate(val_loader, model, criterion, scf, SEinit, args):
         args.f.flush()
 
         args.accuracy_record.append(top1.avg)
-    if args.SC2D:
-        return top1.avg, None
-    else:
-        return top1.avg, SEs
+
+    return top1.avg
 
 
 if __name__ == '__main__':

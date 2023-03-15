@@ -284,11 +284,11 @@ def main_worker(args):
         if args.adj is not None:
             args.adj = args.adj * torch.load('datasets/AdjMat.pt')
         if args.data == 'MNIST':
-            train_dataset = datasets.MNIST('datasets/', train=True, transform=transforms.Compose(augmentation()))
-            val_dataset = datasets.MNIST('datasets/', train=False, transform=transforms.Compose(augmentation()))
+            tra_ds = datasets.MNIST('datasets/', train=True, transform=transforms.Compose(augmentation()))
+            val_ds = datasets.MNIST('datasets/', train=False, transform=transforms.Compose(augmentation()))
         else:
-            train_dataset = datasets.FashionMNIST('datasets/', train=True, transform=transforms.Compose(augmentation()))
-            val_dataset = datasets.FashionMNIST('datasets/', train=False, transform=transforms.Compose(augmentation()))
+            tra_ds = datasets.FashionMNIST('datasets/', train=True, transform=transforms.Compose(augmentation()))
+            val_ds = datasets.FashionMNIST('datasets/', train=False, transform=transforms.Compose(augmentation()))
     elif args.data.startswith('Ins'):
         traindata = torch.load('datasets/{}/train/dataset.pt'.format(args.data))
         trainlabels = torch.load('datasets/{}/train/labels.pt'.format(args.data))
@@ -307,10 +307,10 @@ def main_worker(args):
         if args.fixz:
             args.origin_classes = 2
             if args.entanglement:
-                train_dataset = LoadHamDatawithH(traindata, trainlabels, args.z)
+                tra_ds = LoadHamDatawithH(traindata, trainlabels, args.z)
             else:
-                train_dataset = LoadHamData(traindata, trainlabels, args.z)
-            val_dataset = LoadHamData(valdata, vallabels, args.z)
+                tra_ds = LoadHamData(traindata, trainlabels, args.z)
+            val_ds = LoadHamData(valdata, vallabels, args.z)
         else:
             args.origin_classes = 3
             trainEs = torch.load('datasets/{}/train/Es.pt'.format(args.data))
@@ -318,21 +318,20 @@ def main_worker(args):
             if args.double:
                 trainEs, testEs = trainEs.type(torch.complex128), testEs.type(torch.complex128)
             if args.entanglement:
-                train_dataset = LoadHamDatawithH_nfz(traindata, trainlabels, trainEs + args.z)
+                tra_ds = LoadHamDatawithH_nfz(traindata, trainlabels, trainEs + args.z)
             else:
-                train_dataset = LoadHamData_nfz(traindata, trainlabels, trainEs + args.z)
-            val_dataset = LoadHamData_nfz(valdata, vallabels, testEs + args.z)
+                tra_ds = LoadHamData_nfz(traindata, trainlabels, trainEs + args.z)
+            val_ds = LoadHamData_nfz(valdata, vallabels, testEs + args.z)
     else:
         raise NameError('Wrong Dataset')
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
+    tra_ldr = DataLoader(tra_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
                               pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
+    val_ldr = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
                             pin_memory=True)
-    print('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}'.format(
-        len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
-    args.f.write('trainset:{}\ttrainloader:{}\tvalset:{}\tvalloader:{}\n\n'.format(
-        len(train_dataset), len(train_loader), len(val_dataset), len(val_loader)))
+    temp = 'tra_ds:{}\ttra_ldr:{}\tval_ds:{}\tval_ldr:{}'.format(len(tra_ds), len(tra_ldr), len(val_ds), len(val_ldr))
+    print(temp)
+    args.f.write('{}\n\n'.format(temp))
     args.f.flush()
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -343,10 +342,10 @@ def main_worker(args):
             scheduler.step()
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args)
+        train(tra_ldr, model, criterion, optimizer, epoch, args)
 
         # evaluate on validation set
-        acc1 = validate(val_loader, model, criterion, args)
+        acc1 = validate(val_ldr, model, criterion, args)
 
         # remember best acc@1 and save checkpoint
         is_best = acc1 >= best_acc1
@@ -369,7 +368,7 @@ def main_worker(args):
             }, False, '{}/checkpoint_{:04d}.pth.tar'.format(args.path, epoch), args)
 
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
+def train(tra_ldr, model, criterion, optimizer, epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
@@ -410,13 +409,13 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
                 items += [Ibcd, Ibc, Ibd, Ib_cd]
             else:
                 items += [Ibc]
-    progress = ProgressMeter(len(train_loader), items, prefix="Epoch: [{}]".format(epoch))
+    progress = ProgressMeter(len(tra_ldr), items, prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
     model.train()
 
     end = time.time()
-    for i, (images, target) in enumerate(train_loader):
+    for i, (images, target) in enumerate(tra_ldr):
         if not args.fixz:
             model.z = target[1].to(args.device, non_blocking=True)
             target = target[0]
@@ -555,12 +554,12 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
                 args.Ib_cd_record.append(0.)
 
 
-def validate(val_loader, model, criterion, args):
+def validate(val_ldr, model, criterion, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     progress = ProgressMeter(
-        len(val_loader),
+        len(val_ldr),
         [batch_time, losses, top1],
         prefix='Test: ')
 
@@ -569,7 +568,7 @@ def validate(val_loader, model, criterion, args):
 
     with torch.no_grad():
         end = time.time()
-        for i, (images, target) in enumerate(val_loader):
+        for i, (images, target) in enumerate(val_ldr):
             if not args.fixz:
                 model.z = target[1].to(args.device, non_blocking=True)
                 target = target[0]

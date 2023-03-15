@@ -162,12 +162,13 @@ class LoadHamDatawithH_nfz(LoadHamData):
 
 
 class LoadFKHamData(Dataset):
-    def __init__(self, dataload, labels):
+    def __init__(self, dataload, labels, SEinit):
         self.dataload = dataload
         self.labels = labels
+        self.SEinit = SEinit
 
     def __getitem__(self, index):
-        return self.dataload[index], self.labels[index]
+        return self.dataload[index], self.SEinit[index], index, self.labels[index]
 
     def __len__(self):
         return self.dataload.shape[0]
@@ -181,19 +182,6 @@ class LoadFKHamDatawithSE(Dataset):
 
     def __getitem__(self, index):
         return self.dataload[index] + torch.diag_embed(self.SE[index]), self.labels[index, 1:]
-
-    def __len__(self):
-        return self.dataload.shape[0]
-
-
-class LoadFKHamDatawithSEinit(Dataset):
-    def __init__(self, dataload, labels, SEinit):
-        self.dataload = dataload
-        self.labels = labels
-        self.SEinit = SEinit
-
-    def __getitem__(self, index):
-        return self.dataload[index], self.SEinit[index], self.labels[index]
 
     def __len__(self):
         return self.dataload.shape[0]
