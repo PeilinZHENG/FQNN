@@ -97,7 +97,6 @@ class DMFT:
             model.z = iomega
         '''0. initialize self-energy'''
         if SEinit is None:
-            # SE = torch.zeros((bz, self.count, size), device=device, dtype=dtype) # (bz, self.count, size)
             # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype) # (bz, self.count, size)
             SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, self.count, size)
         else:
