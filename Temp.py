@@ -23,7 +23,7 @@ class LoadData(Dataset):
         self.SEinit = SEinit
 
     def __getitem__(self, index):
-        return self.dataload[index], [self.SEinit[index], self.labels.long()]
+        return self.dataload[index], self.SEinit[index], self.labels.long()
 
     def __len__(self):
         return self.dataload.shape[0]
@@ -50,16 +50,6 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
         return data, index
 
 if __name__ == "__main__":
-    model = TestNN(True).to('cuda')
-    print(model.scale.device)
-    torch.save(model.state_dict(), 'test.pth.tar')
-
-    check = torch.load('test.pth.tar', map_location="cpu")
-    model.load_state_dict(check)
-    print(check)
-    exit(0)
-
-
     bz = 16
     traindata = 0.1 * torch.arange(100).unsqueeze(-1).tile(1, 2)
     trainlabels = ((1 - (-1) ** torch.arange(100)) / 2)
@@ -69,13 +59,22 @@ if __name__ == "__main__":
     # generator.manual_seed(0)
     # sampler = RandomSampler(train_dataset, replacement=True, generator=generator)
     # sampler = CtrlRandomSampler(train_dataset)
-    train_loader = MyDataLoader(train_dataset, batch_size=bz, shuffle=True, num_workers=0, pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=bz, shuffle=True, num_workers=0, pin_memory=True)
     for epoch in range(2):
-        for i, ((x, target), index) in enumerate(train_loader):
-            print(epoch, i, 'train\n', x, '\n', index)
-            print(target[0])
+        for i, (x, se, target) in enumerate(train_loader):
+            print(epoch, i, 'train\n', x, '\n', train_loader.sampler.indices)
+            print(se)
 
-            train_loader.dataset.SEinit[index] = torch.tensor(index).float().unsqueeze(-1).tile(1, 2)
+            # train_loader.dataset.SEinit[index] = torch.tensor(index).float().unsqueeze(-1).tile(1, 2)
 
         # train_loader.dataset.dataload = 0.111 * torch.arange(100).unsqueeze(-1).tile(1, 2)
 
+    exit(0)
+
+    model = TestNN(True).to('cuda')
+    print(model.scale.device)
+    torch.save(model.state_dict(), 'test.pth.tar')
+
+    check = torch.load('test.pth.tar', map_location="cpu")
+    model.load_state_dict(check)
+    print(check)
