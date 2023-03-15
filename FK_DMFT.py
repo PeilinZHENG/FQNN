@@ -142,13 +142,13 @@ class DMFT:
 if __name__ == "__main__":
     from FK_Data import Ham
     import os, mkl, time
-    os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     mkl.set_num_threads(8)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 14  # size = L ** 2
+    L = 10  # size = L ** 2
     save = True
     show = True
 
@@ -184,7 +184,7 @@ if __name__ == "__main__":
     model_path = 'models/{}/{}'.format(data, Net)
     model = Network('Naive', L ** 2, 2, 100, 64, None, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
-    model.load_state_dict(checkpoint['state_dict'], strict=False)
+    model.load_state_dict(checkpoint['state_dict'])
     model = model.to(device)
     model.eval()
 
@@ -195,7 +195,7 @@ if __name__ == "__main__":
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
 
     '''compute self-energy by DMFT'''
-    bz = 75
+    bz = 150
     P = []
     for i in range(myceil(len(U) / bz)):
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
