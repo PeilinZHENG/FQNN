@@ -400,7 +400,7 @@ def train(train_loader, model, criterion, optimizer, scf, SEinit, epoch, args):
     # switch to train mode
     model.train()
 
-    if not args.SC2D: SEs = []
+    if not args.SC2D and args.workers > 0: SEs = []
     end = time.time()
     for i, pkg in enumerate(train_loader):
         if args.SC2D:
