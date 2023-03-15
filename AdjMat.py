@@ -1,8 +1,5 @@
 import torch
-import mkl, warnings
 
-warnings.filterwarnings('ignore')
-mkl.set_num_threads(1)
 
 L = 4
 

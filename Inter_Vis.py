@@ -7,15 +7,21 @@ import torch.nn.functional as F
 import sklearn.metrics as metrics
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-import warnings, mkl
+import warnings
 from ent import H2G
 from rgfnn import Network
 from Data_Ins import Ham
 from utils import readinfo, mymkdir, LoadHamData, image2G, LossPrepro, dircheck
 warnings.filterwarnings('ignore')
-mkl.set_num_threads(1)
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+torch.set_num_threads(1)
 
 
 amount = 100

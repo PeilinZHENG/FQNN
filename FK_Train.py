@@ -1,6 +1,5 @@
 import argparse
 import time
-import mkl
 import warnings
 
 import torch.nn as nn
@@ -116,7 +115,12 @@ parser.add_argument('--tol_bi', default=1e-6, type=float,
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-mkl.set_num_threads(args.threads)
+os.environ['OMP_NUM_THREADS'] = str(args.threads)
+os.environ['OPENBLAS_NUM_THREADS'] = str(args.threads)
+os.environ['MKL_NUM_THREADS'] = str(args.threads)
+os.environ['VECLIB_MAXIMUM_THREADS'] = str(args.threads)
+os.environ['NUMEXPR_NUM_THREADS'] = str(args.threads)
+torch.set_num_threads(args.threads)
 
 best_acc1 = 0.
 

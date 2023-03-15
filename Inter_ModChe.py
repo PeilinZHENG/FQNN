@@ -5,11 +5,18 @@ import matplotlib.pyplot as plt
 from utils import readinfo, mymkdir, image2G, image2H, emb_hid_size_wrapper, LossPrepro, dircheck
 from ent import updateH, H2G, G2H, constrModH, correlation, mutInfo, RecurGF
 from rgfnn import Network, GLinear, GinvLinear, GcorLinear
-import mkl, warnings
+import warnings
 warnings.filterwarnings('ignore')
-mkl.set_num_threads(1)
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+torch.set_num_threads(1)
+
 np.random.seed(9)
 
 

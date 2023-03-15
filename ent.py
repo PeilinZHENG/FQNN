@@ -229,6 +229,13 @@ if __name__ == "__main__":
     from rgfnn import Network
     from utils import readinfo, emb_hid_size_wrapper
 
+    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['OPENBLAS_NUM_THREADS'] = '1'
+    os.environ['MKL_NUM_THREADS'] = '1'
+    os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+    os.environ['NUMEXPR_NUM_THREADS'] = '1'
+    torch.set_num_threads(1)
+
     order, delta, tc = 1, 1e-2, 1
     data = 'Ins_12'
     Net = 'Simple_en'

@@ -141,10 +141,19 @@ class DMFT:
 
 if __name__ == "__main__":
     from FK_Data import Ham
-    import os, mkl, time
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
-    os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-    mkl.set_num_threads(8)
+    import os, time, warnings
+    warnings.filterwarnings('ignore')
+
+    threads = 8
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(threads)
+    os.environ['CUDA_LAUNCH_BLOCKING'] = str(threads)
+    os.environ['OMP_NUM_THREADS'] = str(threads)
+    os.environ['OPENBLAS_NUM_THREADS'] = str(threads)
+    os.environ['MKL_NUM_THREADS'] = str(threads)
+    os.environ['VECLIB_MAXIMUM_THREADS'] = str(threads)
+    os.environ['NUMEXPR_NUM_THREADS'] = str(threads)
+    torch.set_num_threads(threads)
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 

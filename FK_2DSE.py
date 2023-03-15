@@ -2,7 +2,7 @@ import torch, os
 from FK_DMFT import DMFT
 import torch.multiprocessing as mp
 from utils import myceil
-import mkl, warnings
+import warnings
 warnings.filterwarnings('ignore')
 
 # parameters
@@ -22,13 +22,12 @@ double = True
 
 
 if processors > 0:
-    mkl.set_num_threads(1)
+    os.environ['OMP_NUM_THREADS'] = '1'
+    os.environ['OPENBLAS_NUM_THREADS'] = '1'
+    os.environ['MKL_NUM_THREADS'] = '1'
+    os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+    os.environ['NUMEXPR_NUM_THREADS'] = '1'
     torch.set_num_threads(1)
-    os.environ ['OMP_NUM_THREADS'] = '1'
-    os.environ ['OPENBLAS_NUM_THREADS'] = '1'
-    os.environ ['MKL_NUM_THREADS'] = '1'
-    os.environ ['VECLIB_MAXIMUM_THREADS'] = '1'
-    os.environ ['NUMEXPR_NUM_THREADS'] = '1'
 
 
 path = 'datasets/FK_{}/{}'.format(L, TYPE)

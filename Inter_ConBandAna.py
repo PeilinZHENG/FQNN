@@ -16,9 +16,16 @@ from ent import constrModH, correlation, H2G
 from rgfnn import Network
 from Data_Ins import Ham, pbc, l2c, c2l, nnn_mask
 from Data_Ins_d import countriangle, Stri, ChernNumber, Kubo
-import mkl, warnings
+import warnings
 warnings.filterwarnings('ignore')
-mkl.set_num_threads(1)
+
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+torch.set_num_threads(1)
+
 np.random.seed(0)
 torch.manual_seed(2200)
 

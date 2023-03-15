@@ -1,14 +1,10 @@
 import argparse
-import os
-import random
 import time
-import mkl
 import warnings
 
 import torch.nn as nn
 import torch.nn.parallel
 import torch.optim
-from torch.utils.data import DataLoader
 import torch.utils.data.distributed
 import torchvision.datasets as datasets
 
@@ -78,7 +74,12 @@ parser.add_argument('--lars', action='store_true',
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-mkl.set_num_threads(1)
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+torch.set_num_threads(1)
 
 best_acc1 = 0.
 
