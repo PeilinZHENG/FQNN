@@ -1,10 +1,20 @@
 import torch
+from torch import nn
 from torch.utils.data import DataLoader, Dataset, RandomSampler
 from torch.utils.data.dataloader import _SingleProcessDataLoaderIter
 from torch.utils.data import _utils
 from utils import CtrlRandomSampler
 
 torch.manual_seed(0)
+
+
+class TestNN(nn.Module):
+    def __init__(self, scale):
+        super(TestNN, self).__init__()
+        self.register_buffer('scale', torch.tensor(scale))
+        self.scale = torch.tensor(5.)
+        self.lin = nn.Linear(5, 5)
+
 
 class LoadData(Dataset):
     def __init__(self, dataload, labels, SEinit):
@@ -40,6 +50,16 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
         return data, index
 
 if __name__ == "__main__":
+    model = TestNN(True).to('cuda')
+    print(model.scale.device)
+    torch.save(model.state_dict(), 'test.pth.tar')
+
+    check = torch.load('test.pth.tar', map_location="cpu")
+    model.load_state_dict(check)
+    print(check)
+    exit(0)
+
+
     bz = 16
     traindata = 0.1 * torch.arange(100).unsqueeze(-1).tile(1, 2)
     trainlabels = ((1 - (-1) ** torch.arange(100)) / 2)
