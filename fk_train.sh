@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=2
+gpu=4
 threads=8
 
 # Parameters of DMFT
@@ -12,9 +12,9 @@ tol_sc=1e-6
 tol_bi=1e-6
 
 # Parameters of training
-L=14
+L=12
 data=FK_${L}
-Net=Naive_1
+Net=Naive_test
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
@@ -40,10 +40,10 @@ ss=20
 drop=0
 disor=0
 
-epochs=10
+epochs=1
 workers=8
-batchsize=100
-print_freq=10
+batchsize=128
+print_freq=7
 save_freq=1
 seed=0
 
@@ -58,7 +58,7 @@ resume="models/${data}/${preNet}/${checkpointID}.pth.tar"
 
 source activate
 #source /opt/anaconda3/etc/profile.d/conda.sh
-conda activate pytorch
+conda activate qualg
 
 
 python FK_Train.py \

@@ -115,16 +115,13 @@ class DMFT:
             if self.filling is not None:
                 E_mu = self.bisection(self.fix_filling, WeissInv, T, iomega, U, E_mu)
             nf = self.calc_nf(WeissInv, T, iomega, U, E_mu) # (bz, 1, size)
-            if prinfo: print('<nf>={}'.format(torch.mean(nf).item()))
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
+            if prinfo: print('<nf>={}'.format(torch.mean(nf).item()))
             '''4. compute new self-energy'''
             error = torch.linalg.norm(Gimp - Gloc).item()
             if error < self.tol_sc:
                 if prinfo: print("final error: {}".format(error))
-                if reOP:
-                    return SE, self.calc_OP(nf, prinfo)
-                else:
-                    return SE  # (bz, self.count, size)
+                return (SE, self.calc_OP(nf, prinfo)) if reOP else SE   # (bz, self.count, size)
             else:
                 if error < min_error:
                     min_error = error
@@ -132,10 +129,7 @@ class DMFT:
                     if prinfo: best_nf = nf
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
                 if prinfo: print("{} loop error: {}".format(l, error))
-        if reOP:
-            return best_SE, self.calc_OP(best_nf, prinfo)
-        else:
-            return best_SE # (bz, self.count, size)
+        return (best_SE, self.calc_OP(best_nf, prinfo)) if reOP else best_SE  # (bz, self.count, size)
 
 
 if __name__ == "__main__":
@@ -156,7 +150,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 14  # size = L ** 2
+    L = 10  # size = L ** 2
     save = True
     show = True
 
@@ -197,9 +191,9 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
-    PTP = 1.5
+    PTP, QMCPTP = 2.4, 3.99
     U = torch.linspace(1., 4., 150)
-    T = 0.1 * torch.ones(len(U))
+    T = 0.15 * torch.ones(len(U))
     mu = U / 2.
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
 
@@ -232,6 +226,7 @@ if __name__ == "__main__":
     ax1.scatter(U, P, s=10, c='r', marker='o')
     ax1.plot([U[0], U[-1]], [0.5, 0.5], 'ko--', linewidth=0.5, markersize=0.1)
     if PTP is not None: ax1.plot([PTP, PTP], [0., 1.], 'go--', linewidth=0.5, markersize=0.1)
+    if QMCPTP is not None: ax1.plot([QMCPTP, QMCPTP], [0., 1.], 'yo--', linewidth=0.5, markersize=0.1)
     ax1.tick_params(axis='y', labelcolor='r')
     ax2 = ax1.twinx()
     ax2.set_ylabel('OP', c='b')
