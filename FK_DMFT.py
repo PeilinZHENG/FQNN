@@ -72,14 +72,13 @@ class DMFT:
             c[index] = a[index]
             a = c
 
-    def saveOP(self, nf, T, U, error, L):
-        op = torch.round((nf[:, 0, 0] - nf[:, 0, 1]).abs().cpu(), decimals=3).numpy()
-        print('order parameter:\n', op)
-        mymkdir(f'results/FK_{L}')
-        torch.save({'OP': op, 'T': T.cpu(), 'U': U.cpu(), 'error': error}, f'results/FK_{L}/OP.pt')
+    def calc_OP(self, nf, prinfo=False):
+        op = (nf[:, 0, 0] - nf[:, 0, 1]).abs()
+        if prinfo: print('order parameter:\n', torch.round(op, decimals=3))
+        return op
 
     @torch.no_grad()
-    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, prinfo=False):  # E_mu, U: (bz,)
+    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, reOP=False, prinfo=False):  # E_mu, U: (bz,)
         device, dtype = self.iomega0.device, self.iomega0.dtype
         bz, _, _, size = H0.shape
         if E_mu is None:
@@ -121,21 +120,22 @@ class DMFT:
             '''4. compute new self-energy'''
             error = torch.linalg.norm(Gimp - Gloc).item()
             if error < self.tol_sc:
-                if prinfo:
-                    print("final error: {}".format(error))
-                    self.saveOP(nf, T[:, 0].real, U[:, 0, 0].real, error, int(size ** 0.5))
-                return SE  # (bz, self.count, size)
+                if prinfo: print("final error: {}".format(error))
+                if reOP:
+                    return SE, self.calc_OP(nf, prinfo)
+                else:
+                    return SE  # (bz, self.count, size)
             else:
                 if error < min_error:
                     min_error = error
                     best_SE = SE
                     if prinfo: best_nf = nf
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
-                if prinfo:
-                    print("{} loop error: {}".format(l, error))
-        if prinfo:
-            self.saveOP(best_nf, T[:, 0].real, U[:, 0, 0].real, min_error, int(size ** 0.5))
-        return best_SE # (bz, self.count, size)
+                if prinfo: print("{} loop error: {}".format(l, error))
+        if reOP:
+            return best_SE, self.calc_OP(best_nf, prinfo)
+        else:
+            return best_SE # (bz, self.count, size)
 
 
 if __name__ == "__main__":
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 12  # size = L ** 2
+    L = 14  # size = L ** 2
     save = True
     show = True
 
@@ -197,36 +197,48 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
+    PTP = 1.5
     U = torch.linspace(1., 4., 150)
-    T = 0.15 * torch.ones(len(U))
+    T = 0.1 * torch.ones(len(U))
     mu = U / 2.
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
 
     '''compute self-energy by DMFT'''
-    bz = 150
-    P = []
+    bz = 75
+    P, OP = [], []
     for i in range(myceil(len(U) / bz)):
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
         T_batch = T[i * bz:(i + 1) * bz].to(device)
         U_batch = U[i * bz:(i + 1) * bz].to(device)
-        SE = scf(T_batch, H0_batch, U_batch, model=model, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
+        SE, op = scf(T_batch, H0_batch, U_batch, model=model, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
         '''compute phase diagram'''
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)
         P.append(softmax(LDOS, dim=1)[:, 1].data.cpu())
+        OP.append(op.cpu())
     P = torch.cat(P, dim=0).numpy()
+    OP = torch.cat(OP, dim=0).numpy()
     U = U.numpy()
 
     '''plot phase diagram'''
-    plt.figure()
+    fig, ax1 = plt.subplots()
+    plt.title(f'Metal VS Insulator / T={T[0].item():.3f}, L={L}')
     plt.axis([U[0], U[-1], 0., 1.])
-    # plt.plot([2., 2.], [0., 1.], 'bo--', linewidth=0.5, markersize=0.1)
-    # plt.plot([2.14, 2.14], [0., 1.], 'ko--', linewidth=0.5, markersize=0.1)
-    plt.plot([U[0], U[-1]], [0.5, 0.5], 'ko--', linewidth=0.5, markersize=0.1)
-    plt.scatter(U, P, s=20, c='r', marker='o')
-    plt.xlabel('U')
-    plt.ylabel('P')
-    plt.title('Metal VS Insulator / T={:.3f}, L={}'.format(T[0].item(), L))
+    ax1.set_xlim([U[0], U[-1]])
+    ax1.set_xlabel('U')
+    ax1.set_ylabel('P', c='r')
+    ax1.set_ylim([0., 1.])
+    ax1.set_yticks(0.1 * np.arange(11))
+    ax1.scatter(U, P, s=10, c='r', marker='o')
+    ax1.plot([U[0], U[-1]], [0.5, 0.5], 'ko--', linewidth=0.5, markersize=0.1)
+    if PTP is not None: ax1.plot([PTP, PTP], [0., 1.], 'go--', linewidth=0.5, markersize=0.1)
+    ax1.tick_params(axis='y', labelcolor='r')
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('OP', c='b')
+    ax2.set_ylim([0., 1.])
+    ax2.set_yticks(0.1 * np.arange(11))
+    ax2.scatter(U, OP, s=10, c='b', marker='^')
+    ax2.tick_params(axis='y', labelcolor='b')
     if save:
         path = 'results/{}'.format(data)
         mymkdir(path)
@@ -235,4 +247,4 @@ if __name__ == "__main__":
         plt.savefig('{}/PD_{:.3f}.jpg'.format(path, T[0].item()))
     if show: plt.show()
     plt.close()
-    if save: np.save('{}/PD_{:.3f}.npy'.format(path, T[0].item()), np.stack((U, P), axis=0))
+    if save: np.save('{}/PD_{:.3f}.npy'.format(path, T[0].item()), np.stack((U, P, OP), axis=0))
