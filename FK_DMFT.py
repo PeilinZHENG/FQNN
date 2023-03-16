@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
-    Net = 'Naive_0'
+    Net = 'Naive_1'
     model_path = 'models/{}/{}'.format(data, Net)
     model = Network('Naive', L ** 2, 2, 100, 64, None, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
