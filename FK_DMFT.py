@@ -150,7 +150,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 10  # size = L ** 2
+    L = 14  # size = L ** 2
     save = True
     show = True
 
@@ -182,7 +182,7 @@ if __name__ == "__main__":
 
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
-    Net = 'Naive_1'
+    Net = 'Naive_0'
     model_path = 'models/{}/{}'.format(data, Net)
     model = Network('Naive', L ** 2, 2, 100, 64, None, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
