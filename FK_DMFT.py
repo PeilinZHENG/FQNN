@@ -150,9 +150,9 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 12  # size = L ** 2
+    L = 14  # size = L ** 2
     Net = 'Naive_0'
-    T = 0.11
+    T = 0.14
     save = True
     show = True
 
