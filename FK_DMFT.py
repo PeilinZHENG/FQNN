@@ -195,7 +195,7 @@ if __name__ == "__main__":
     T = 0.1 * torch.ones(len(U))
     mu = U / 2.
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
-    PTPs = {'0.100': (1.5, 1.76), '0.110': (1., 2.01), '0.120': (1., 2.28), '0.130': (2.0, 2.6), '0.140': (2., 3.03),
+    PTPs = {'0.100': (1.5, 1.76), '0.110': (1.7, 2.01), '0.120': (1.8, 2.28), '0.130': (2.0, 2.6), '0.140': (2.2, 3.03),
             '0.150': (2.4, 3.99)}
     PTP, QMCPTP = PTPs[f'{T[0].item():.3f}']
 
@@ -206,7 +206,10 @@ if __name__ == "__main__":
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
         T_batch = T[i * bz:(i + 1) * bz].to(device)
         U_batch = U[i * bz:(i + 1) * bz].to(device)
-        SE, op = scf(T_batch, H0_batch, U_batch, model=model, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
+        SE, op = scf(T_batch, H0_batch, U_batch, model=None if '2d' in Net else model, reOP=True,
+                     prinfo=True if i == 0 else False)  # (bz, scf.count, size)
+        if '2d' in Net:
+            model.z = (T_batch[:, None].to(device=device, dtype=scf.iomega0.dtype) @ scf.iomega0).unsqueeze(-1)
         '''compute phase diagram'''
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)
