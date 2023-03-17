@@ -393,6 +393,7 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
     model.train()
     end = time.time()
     for i, pkg in enumerate(tra_ldr):
+        optimizer.zero_grad()
         H0 = pkg[0].to(args.device, non_blocking=True)
         target = pkg[-1][:, -1].long().to(args.device, non_blocking=True)
         bz = H0.size(0)
@@ -448,7 +449,6 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
         top1.update(acc1[0], bz)
 
         # compute gradient and do SGD step
-        optimizer.zero_grad()
         loss.backward()
         if args.gradsnorm:
             total_norm, avg_norm = compute_grads(model, order=args.gradsnorm)

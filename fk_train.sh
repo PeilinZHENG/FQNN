@@ -14,7 +14,7 @@ tol_bi=1e-6
 # Parameters of training
 L=10
 data=FK_${L}
-Net=Naive_2d_0
+Net=Naive_2d_1
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
