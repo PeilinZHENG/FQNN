@@ -192,7 +192,7 @@ if __name__ == "__main__":
 
     '''construct Hamiltonians'''
     U = torch.linspace(1., 4., 150)
-    T = 0.13 * torch.ones(len(U))
+    T = 0.1 * torch.ones(len(U))
     mu = U / 2.
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
     PTPs = {'0.100': (1.5, 1.76), '0.110': (1., 2.01), '0.120': (1., 2.28), '0.130': (2.0, 2.6), '0.140': (2., 3.03),
