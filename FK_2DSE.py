@@ -7,7 +7,7 @@ warnings.filterwarnings('ignore')
 
 # parameters
 L = 14
-TYPE = 'train'
+TYPE = 'test'
 processors = 0
 if processors == 0: bz = 50
 # DMFT configs
