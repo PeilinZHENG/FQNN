@@ -6,7 +6,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 # parameters
-L = 10
+L = 14
 TYPE = 'train'
 processors = 0
 if processors == 0: bz = 50
