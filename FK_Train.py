@@ -397,14 +397,23 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
         target = pkg[-1][:, -1].long().to(args.device, non_blocking=True)
         bz = H0.size(0)
         if args.SC2D:
-            model.z = torch.matmul(pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True),
-                                   scf.iomega0).unsqueeze(-1)
+            if args.Net.startswith('C'):
+                H0 = H0[:, args.count:args.count + 1]
+                model.z = pkg[1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
+                          scf.iomega0[0, args.count]  # (bz,)
+            else:
+                model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
+                           scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
         else:
             SE = scf(pkg[-1][:, 1].to(args.device, non_blocking=True), H0,
                      pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
                      SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
             tra_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
-            H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
+            if args.Net.startswith('C'):
+                H0 = H0 + torch.diag_embed(SE[:, args.count:args.count + 1])  # (bz, 1, size, size)
+                model.z = model.z[:, args.count, 0]   # (bz,)
+            else:
+                H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
 
         # compute output
         output = model(H0)
@@ -545,14 +554,23 @@ def validate(val_ldr, model, criterion, scf, args):
             target = pkg[-1][:, -1].long().to(args.device, non_blocking=True)
             bz = H0.size(0)
             if args.SC2D:
-                model.z = torch.matmul(pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True),
-                                       scf.iomega0).unsqueeze(-1)
+                if args.Net.startswith('C'):
+                    H0 = H0[:, args.count:args.count + 1]
+                    model.z = pkg[1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
+                              scf.iomega0[0, args.count]  # (bz,)
+                else:
+                    model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
+                               scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
             else:
                 SE = scf(pkg[-1][:, 1].to(args.device, non_blocking=True), H0,
                          pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
                          SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
                 val_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
-                H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
+                if args.Net.startswith('C'):
+                    H0 = H0 + torch.diag_embed(SE[:, args.count:args.count + 1])  # (bz, 1, size, size)
+                    model.z = model.z[:, args.count, 0]  # (bz,)
+                else:
+                    H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
 
             # compute output
             output = model(H0)
