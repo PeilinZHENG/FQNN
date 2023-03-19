@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     L = 10  # size = L ** 2
     Net = 'Naive_2d_0'
-    T = 0.1
+    T = 0.11
     save = True
     show = True
 
