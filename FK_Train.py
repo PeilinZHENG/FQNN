@@ -97,6 +97,8 @@ parser.add_argument('--lars', action='store_true',
 # DMFT configs:
 parser.add_argument('--SC2D', action='store_true',
                     help='self-consist at 2D ')
+parser.add_argument('--SF', action='store_true',
+                    help='single frequence self-energy at n=0 ')
 parser.add_argument('--count', default=100, type=int,
                     help='n count')
 parser.add_argument('--iota', default=1e-3, type=float,
@@ -217,6 +219,7 @@ def main_worker(args):
 
     # create model
     Net = args.Net[:args.Net.index('_')]
+    if Net.startswith('C'): args.SF = True
     model = Network(Net, args.input_size, args.output_size, args.embedding_size, args.hidden_size, None, args.hermi,
                     args.diago, args.restr, args.real, args.init_bound, args.scale, args.drop, args.disor, args.double)
     print(model)
@@ -394,11 +397,11 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
     end = time.time()
     for i, pkg in enumerate(tra_ldr):
         H0 = pkg[0].to(args.device, non_blocking=True)
-        dtype = (torch.float64 if args.double else torch.float32) if args.Net.startswith('C') else torch.long
+        dtype = (torch.float64 if args.double else torch.float32) if args.SF else torch.long
         target = pkg[-1][:, -1].to(device=args.device, dtype=dtype, non_blocking=True)
         bz = H0.size(0)
         if args.SC2D: # H0: (bz, scf.count, size, size)
-            if args.Net.startswith('C'):
+            if args.SF:
                 H0 = H0[:, args.count:args.count + 1]  # (bz, 1, size, size)
                 model.z = pkg[1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
                           scf.iomega0[0, args.count]   # (bz,)
@@ -410,7 +413,7 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
                      pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
                      SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
             tra_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
-            if args.Net.startswith('C'):
+            if args.SF:
                 H0 = H0 + torch.diag_embed(SE[:, args.count:args.count + 1])  # (bz, 1, size, size)
                 model.z = model.z[:, args.count, 0]   # (bz,)
             else:
@@ -552,11 +555,11 @@ def validate(val_ldr, model, criterion, scf, args):
         end = time.time()
         for i, pkg in enumerate(val_ldr):
             H0 = pkg[0].to(args.device, non_blocking=True)
-            dtype = (torch.float64 if args.double else torch.float32) if args.Net.startswith('C') else torch.long
+            dtype = (torch.float64 if args.double else torch.float32) if args.SF else torch.long
             target = pkg[-1][:, -1].to(device=args.device, dtype=dtype, non_blocking=True)
             bz = H0.size(0)
             if args.SC2D:  # H0: (bz, scf.count, size, size)
-                if args.Net.startswith('C'):
+                if args.SF:
                     H0 = H0[:, args.count:args.count + 1]  # (bz, 1, size, size)
                     model.z = pkg[1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
                               scf.iomega0[0, args.count]   # (bz,)
@@ -568,7 +571,7 @@ def validate(val_ldr, model, criterion, scf, args):
                          pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
                          SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
                 val_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
-                if args.Net.startswith('C'):
+                if args.SF:
                     H0 = H0 + torch.diag_embed(SE[:, args.count:args.count + 1])  # (bz, 1, size, size)
                     model.z = model.z[:, args.count, 0]  # (bz,)
                 else:
