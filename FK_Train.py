@@ -401,7 +401,7 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
             if args.Net.startswith('C'):
                 H0 = H0[:, args.count:args.count + 1]
                 model.z = pkg[1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
-                          scf.iomega0[0, args.count]  # (bz,)
+                          scf.iomega0[0, args.count]   # (bz,)
             else:
                 model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
                            scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
