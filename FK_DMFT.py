@@ -150,7 +150,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 12  # size = L ** 2
+    L = 10  # size = L ** 2
     Net = 'Naive_0'
     T = 0.14
     save = True
@@ -209,8 +209,14 @@ if __name__ == "__main__":
         U_batch = U[i * bz:(i + 1) * bz].to(device)
         SE, op = scf(T_batch, H0_batch, U_batch, model=None if '2d' in Net else model, reOP=True,
                      prinfo=True if i == 0 else False)  # (bz, scf.count, size)
-        if '2d' in Net:
-            model.z = (T_batch[:, None].to(device=device, dtype=scf.iomega0.dtype) @ scf.iomega0).unsqueeze(-1)
+        if Net.startswith('C') or 'sf' in Net:
+            SE = SE[:, count:count + 1]   # (bz, 1, size)
+            if '2d' in Net:
+                model.z = T_batch.to(device=device, dtype=scf.iomega0.dtype) @ scf.iomega0[0, count]  # (bz,)
+            else:
+                model.z = model.z[:, count, 0]  # (bz,)
+        elif '2d' in Net:
+            model.z = (T_batch[:, None].to(device=device, dtype=scf.iomega0.dtype) @ scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
         '''compute phase diagram'''
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)
