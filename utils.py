@@ -425,7 +425,7 @@ def accuracy(output, target, topk=(1,)):
         return res
 
 
-def classes(target, num_classes, origin_classes):
+def classes(target, num_classes, origin_classes, double):
     assert num_classes <= origin_classes
     assert origin_classes > 1
     daty = torch.long
@@ -433,9 +433,9 @@ def classes(target, num_classes, origin_classes):
         return target.long()
     if num_classes == 1:
         if origin_classes == 2:
-            return target.float()
+            return target.double() if double else target.float()
         else:
-            num_classes, daty = 2, torch.float32
+            num_classes, daty = 2, torch.float64 if double else torch.float32
     gap = round(origin_classes / num_classes)
     if gap * (num_classes - 1) >= origin_classes:
         gap -= 1

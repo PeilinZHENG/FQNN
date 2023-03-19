@@ -419,7 +419,7 @@ def train(tra_ldr, model, criterion, optimizer, epoch, args):
         if not args.fixz:
             model.z = target[1].to(args.device, non_blocking=True)
             target = target[0]
-        target = classes(target, args.output_size, args.origin_classes)
+        target = classes(target, args.output_size, args.origin_classes, args.double)
         if args.entanglement and i % args.print_freq == 0:
             if args.data.endswith('MNIST'):
                 H0, images = imageH2G(images, args.input_size, model.z.cpu(), args.adj, args.double)
@@ -575,7 +575,7 @@ def validate(val_ldr, model, criterion, args):
             if args.data.endswith('MNIST'):
                 images = image2G(images, args.input_size, args.adj, z=model.z.cpu() if args.Net.endswith('-') else None,
                                  double=args.double)
-            target = classes(target, args.output_size, args.origin_classes)
+            target = classes(target, args.output_size, args.origin_classes, args.double)
 
             images = images.to(args.device, non_blocking=True)
             target = target.to(args.device, non_blocking=True)
