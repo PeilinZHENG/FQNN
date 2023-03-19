@@ -53,8 +53,8 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
 
 if __name__ == "__main__":
     L = 10
-    T = 0.15
-    Net = 'Naive_1'
+    T = 0.1
+    Net = 'Naive_2d_sf_0'
     data = np.load(f'results/FK_{L}/{Net}/PD_{T:.3f}.npy')
     U = data[0]
     P = data[1]
