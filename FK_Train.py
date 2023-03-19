@@ -394,7 +394,8 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
     end = time.time()
     for i, pkg in enumerate(tra_ldr):
         H0 = pkg[0].to(args.device, non_blocking=True)
-        target = pkg[-1][:, -1].long().to(args.device, non_blocking=True)
+        dtype = (torch.float64 if args.double else torch.float32) if args.Net.startswith('C') else torch.long
+        target = pkg[-1][:, -1].to(device=args.device, dtype=dtype, non_blocking=True)
         bz = H0.size(0)
         if args.SC2D:
             if args.Net.startswith('C'):
@@ -551,7 +552,8 @@ def validate(val_ldr, model, criterion, scf, args):
         end = time.time()
         for i, pkg in enumerate(val_ldr):
             H0 = pkg[0].to(args.device, non_blocking=True)
-            target = pkg[-1][:, -1].long().to(args.device, non_blocking=True)
+            dtype = (torch.float64 if args.double else torch.float32) if args.Net.startswith('C') else torch.long
+            target = pkg[-1][:, -1].to(device=args.device, dtype=dtype, non_blocking=True)
             bz = H0.size(0)
             if args.SC2D:
                 if args.Net.startswith('C'):
