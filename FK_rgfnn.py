@@ -52,7 +52,7 @@ class AbstractSC(Abstract):
             g = g.squeeze(1).squeeze(-1)
         else:
             n = int(count / 2)
-            g = -torch.sum(g * ((-1) ** torch.arange(-n, n, device=g.device).unsqueeze(-1)), dim=1) / torch.pi
+            g = torch.sum(g * ((-1) ** torch.arange(-n, n, device=g.device).unsqueeze(-1)), dim=1)
         return g * self.scale
 
     def FQNN(self, g):
