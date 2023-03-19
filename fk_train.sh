@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=4
+gpu=5
 threads=8
 
 # Parameters of DMFT
@@ -14,11 +14,11 @@ tol_bi=1e-6
 # Parameters of training
 L=10
 data=FK_${L}
-Net=Naive_2d_1
+Net=CNaive_2d_0
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
-output_size=2
+output_size=1
 restr=False       # False: fc, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
 diago=False       # True, False, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
 hermi=True        # True, False, 0: naive hermi
@@ -29,7 +29,7 @@ delta=0
 tc=None
 gradsnorm=False
 
-loss=CE   # NLL, CE, BCE, BCEWL
+loss=BCE   # NLL, CE, BCE, BCEWL
 opt=Adam
 lr=1e-3
 wd=0
@@ -40,7 +40,7 @@ ss=20
 drop=0
 disor=0
 
-epochs=10
+epochs=101
 workers=8
 batchsize=256
 print_freq=5
