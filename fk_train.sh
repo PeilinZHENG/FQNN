@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=4
+gpu=3
 threads=8
 
 # Parameters of DMFT
@@ -14,11 +14,11 @@ tol_bi=1e-6
 # Parameters of training
 L=10
 data=FK_${L}
-Net=CNaive_0
+Net=Naive_2d_0
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
-output_size=1
+output_size=2
 restr=False       # False: fc, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
 diago=False       # True, False, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
 hermi=True        # True, False, 0: naive hermi
@@ -29,7 +29,7 @@ delta=0
 tc=None
 gradsnorm=False
 
-loss=BCE   # NLL, CE, BCE, BCEWL
+loss=CE   # NLL, CE, BCE, BCEWL
 opt=Adam
 lr=1e-3
 wd=0
@@ -68,4 +68,4 @@ python FK_Train.py \
   --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm --seed $seed \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \
   --drop $drop --disor $disor --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale \
-
+  --SC2D
