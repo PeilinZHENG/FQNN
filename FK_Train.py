@@ -397,15 +397,15 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
         dtype = (torch.float64 if args.double else torch.float32) if args.Net.startswith('C') else torch.long
         target = pkg[-1][:, -1].to(device=args.device, dtype=dtype, non_blocking=True)
         bz = H0.size(0)
-        if args.SC2D:
+        if args.SC2D: # H0: (bz, scf.count, size, size)
             if args.Net.startswith('C'):
-                H0 = H0[:, args.count:args.count + 1]
+                H0 = H0[:, args.count:args.count + 1]  # (bz, 1, size, size)
                 model.z = pkg[1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
                           scf.iomega0[0, args.count]   # (bz,)
             else:
                 model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
                            scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
-        else:
+        else:  # H0: (bz, 1, size, size)
             SE = scf(pkg[-1][:, 1].to(args.device, non_blocking=True), H0,
                      pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
                      SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
@@ -555,15 +555,15 @@ def validate(val_ldr, model, criterion, scf, args):
             dtype = (torch.float64 if args.double else torch.float32) if args.Net.startswith('C') else torch.long
             target = pkg[-1][:, -1].to(device=args.device, dtype=dtype, non_blocking=True)
             bz = H0.size(0)
-            if args.SC2D:
+            if args.SC2D:  # H0: (bz, scf.count, size, size)
                 if args.Net.startswith('C'):
-                    H0 = H0[:, args.count:args.count + 1]
+                    H0 = H0[:, args.count:args.count + 1]  # (bz, 1, size, size)
                     model.z = pkg[1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
-                              scf.iomega0[0, args.count]  # (bz,)
+                              scf.iomega0[0, args.count]   # (bz,)
                 else:
                     model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
                                scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
-            else:
+            else:  # H0: (bz, 1, size, size)
                 SE = scf(pkg[-1][:, 1].to(args.device, non_blocking=True), H0,
                          pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
                          SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
