@@ -151,8 +151,8 @@ if __name__ == "__main__":
     torch.manual_seed(0)
 
     L = 10  # size = L ** 2
-    Net = 'Naive_0'
-    T = 0.14
+    Net = 'Naive_2d_sf_0'
+    T = 0.15
     save = True
     show = True
 
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
     model_path = 'models/{}/{}'.format(data, Net)
-    model = Network('Naive', L ** 2, 2, 100, 64, None, double=True)
+    model = Network(Net[:Net.index('_')], L ** 2, 2, 100, 64, None, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
     model.load_state_dict(checkpoint['state_dict'])
     model = model.to(device)
@@ -212,7 +212,7 @@ if __name__ == "__main__":
         if Net.startswith('C') or 'sf' in Net:
             SE = SE[:, count:count + 1]   # (bz, 1, size)
             if '2d' in Net:
-                model.z = T_batch.to(device=device, dtype=scf.iomega0.dtype) @ scf.iomega0[0, count]  # (bz,)
+                model.z = T_batch.to(device=device, dtype=scf.iomega0.dtype) * scf.iomega0[0, count]  # (bz,)
             else:
                 model.z = model.z[:, count, 0]  # (bz,)
         elif '2d' in Net:
