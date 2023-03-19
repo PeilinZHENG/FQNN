@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     Net = 'Naive_0'
-    T = 0.10
+    T = 0.14
     save = True
     show = True
 

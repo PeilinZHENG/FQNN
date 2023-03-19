@@ -133,7 +133,7 @@ def main(args):
         torch.manual_seed(args.seed)
 
     args.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+    if args.Net.startswith('C'): args.SF = True
     # sanity check and reset
     if args.loss == 'CE':
         assert args.output_size > 1
@@ -154,14 +154,14 @@ def main(args):
         None, args.hermi, args.diago, args.restr, args.scale, args.real, args.double))
     args.f.write('count={}\tiota={}\tmomentum={}\tmaxEpoch={}\tfilling={}\ttol_sc={}\ttol_bi={}\n'.format(
         args.count, args.iota, args.momentum, args.maxEpoch, args.filling, args.tol_sc, args.tol_bi))
-    args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\tgradsnorm={}\n'.format(
-        args.data, args.entanglement, args.delta, args.tc, args.gradsnorm))
+    args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\tgradsnorm={}\tseed={}\n'.format(
+        args.data, args.entanglement, args.delta, args.tc, args.gradsnorm, args.seed))
     args.f.write('lossfunc={}\topt={}\tlr={}\tbetas={}\twd={}\tlars={}\tdevice={}\n'.format(
         args.loss, args.opt, args.lr, args.betas, args.wd, args.lars, args.device))
     args.f.write('sch={}\tgamma={}\tstep_size={}\tinit_bound={}\tdrop={}\tdisor={}\n'.format(
         args.sch, args.gamma, args.ss, args.init_bound, args.drop, args.disor))
-    args.f.write('workers={}\tepochs={}\tstart_epoch={}\tbatch_size={}\tseed={}\n'.format(
-        args.workers, args.epochs, args.start_epoch, args.batch_size, args.seed))
+    args.f.write('workers={}\tepochs={}\tstart_epoch={}\tbatch_size={}\tSC2D={}\tSF={}\n'.format(
+        args.workers, args.epochs, args.start_epoch, args.batch_size, args.SC2D, args.SF))
     args.f.write('pretrained={}\n'.format(args.pretrained))
     args.f.write('resume={}\n\n'.format(args.resume))
     args.f.flush()
@@ -219,7 +219,6 @@ def main_worker(args):
 
     # create model
     Net = args.Net[:args.Net.index('_')]
-    if Net.startswith('C'): args.SF = True
     model = Network(Net, args.input_size, args.output_size, args.embedding_size, args.hidden_size, None, args.hermi,
                     args.diago, args.restr, args.real, args.init_bound, args.scale, args.drop, args.disor, args.double)
     print(model)
