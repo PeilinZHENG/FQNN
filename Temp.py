@@ -4,6 +4,8 @@ from torch.utils.data import DataLoader, Dataset, RandomSampler
 from torch.utils.data.dataloader import _SingleProcessDataLoaderIter
 from torch.utils.data import _utils
 from utils import CtrlRandomSampler
+import matplotlib.pyplot as plt
+import numpy as np
 
 torch.manual_seed(0)
 
@@ -50,6 +52,42 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
         return data, index
 
 if __name__ == "__main__":
+    L = 10
+    T = 0.15
+    Net = 'Naive_1'
+    data = np.load(f'results/FK_{L}/{Net}/PD_{T:.3f}.npy')
+    U = data[0]
+    P = data[1]
+    OP = data[2]
+    PTPs = {'0.100': (1.5, 1.76), '0.110': (1.7, 2.01), '0.120': (1.8, 2.28), '0.130': (2.0, 2.6), '0.140': (2.2, 3.03),
+            '0.150': (2.4, 3.99)}
+    PTP, QMCPTP = PTPs[f'{T:.3f}']
+
+    '''plot phase diagram'''
+    fig, ax1 = plt.subplots()
+    plt.title(f'Metal VS Insulator / T={T:.3f}, L={L}')
+    # plt.axis([U[0], U[-1], 0., 1.])
+    ax1.set_xlim([U[0], U[-1]])
+    ax1.set_xlabel('U')
+    ax1.set_ylabel('P', c='r')
+    ax1.set_ylim([0.4, 0.6])
+    ax1.set_yticks(0.4 + 0.02 * np.arange(11))
+    ax1.scatter(U, P, s=10, c='r', marker='o')
+    ax1.plot([U[0], U[-1]], [0.5, 0.5], 'ko--', linewidth=0.5, markersize=0.1)
+    if PTP is not None: ax1.plot([PTP, PTP], [0., 1.], 'go--', linewidth=0.5, markersize=0.1)
+    if QMCPTP is not None: ax1.plot([QMCPTP, QMCPTP], [0., 1.], 'yo--', linewidth=0.5, markersize=0.1)
+    ax1.tick_params(axis='y', labelcolor='r')
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('OP', c='b')
+    ax2.set_ylim([0., 1.])
+    ax2.set_yticks(0.1 * np.arange(11))
+    ax2.scatter(U, OP, s=10, c='b', marker='^')
+    ax2.tick_params(axis='y', labelcolor='b')
+    plt.show()
+    plt.close()
+
+
+    exit(0)
     bz = 16
     traindata = 0.1 * torch.arange(100).unsqueeze(-1).tile(1, 2)
     trainlabels = ((1 - (-1) ** torch.arange(100)) / 2)
