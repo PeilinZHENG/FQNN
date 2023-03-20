@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = 'FK_{}_'.format(L)
-    Net = 'Naive_2d_sf_0'
+    Net = 'Naive_2d_0'
     T = 0.02
     save = True
     show = True
@@ -230,7 +230,6 @@ if __name__ == "__main__":
             SE, op = scf(T_batch, H0_batch, U_batch, model=model, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
             OP.append(op.cpu())
         if Net.startswith('C') or 'sf' in Net:
-            print(SE.shape)
             SE = SE[:, count:count + 1]   # (bz, 1, size)
             if '2d' in Net:
                 model.z = T_batch.to(device=device, dtype=scf.iomega0.dtype) * scf.iomega0[0, count]  # (bz,)
