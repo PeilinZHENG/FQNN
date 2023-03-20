@@ -471,7 +471,7 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
             total_norm, avg_norm = compute_grads(model.emb, order=args.gradsnorm)
             grads2.update(total_norm, bz)
             agrads2.update(avg_norm, bz)
-            if (not args.Net.startswith('Naive')) or (not args.Net.startswith('CNaive')):
+            if (not args.Net.startswith('Naive')) and (not args.Net.startswith('CNaive')):
                 total_norm, avg_norm = compute_grads(model.fc1, order=args.gradsnorm)
                 grads3.update(total_norm, bz)
                 agrads3.update(avg_norm, bz)

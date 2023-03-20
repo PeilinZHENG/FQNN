@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=0
+gpu=5
 threads=8
 
 # Parameters of DMFT
@@ -14,7 +14,7 @@ tol_bi=1e-6
 # Parameters of training
 L=12
 data=FK_${L}_
-Net=Naive_2d_sf_0
+Net=Naive_2d_0
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
@@ -68,5 +68,5 @@ python FK_Train.py \
   --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm --seed $seed \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \
   --drop $drop --disor $disor --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale \
-  --SC2D --SF --lars
+  --SC2D --lars
 
