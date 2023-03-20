@@ -4,7 +4,7 @@ threads=16
 
 # Parameters of training
 L=12
-data=Ins_12_d0.2
+data=Ins_12
 adj=None
 Net=Naive_test
 input_size=$(($L*$L))

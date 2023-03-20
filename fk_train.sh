@@ -31,7 +31,7 @@ gradsnorm=False
 
 loss=CE   # NLL, CE, BCE, BCEWL
 opt=Adam
-lr=1e-1
+lr=1e-2
 wd=0
 betas=0.9,0.999
 sch=StepLR

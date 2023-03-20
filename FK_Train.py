@@ -418,7 +418,6 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
                 H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
 
         # compute output
-        model.train()
         output = model(H0)
         # print(output[0])
         output = LossPrepro(output, args.loss, args.scale)
