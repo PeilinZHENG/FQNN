@@ -6,6 +6,8 @@ from torch.utils.data import _utils
 from utils import CtrlRandomSampler
 import matplotlib.pyplot as plt
 import numpy as np
+from FK_Data import Ham
+from utils import mymkdir
 
 torch.manual_seed(0)
 
@@ -52,6 +54,28 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
         return data, index
 
 if __name__ == "__main__":
+    data = np.load('results/result.npz')
+    L = 12
+    SE = torch.from_numpy(data['SE'])
+    U = torch.from_numpy(data['U'])
+    T = torch.from_numpy(data['T'])
+    mu = U / 2
+    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
+    mymkdir(f'datasets/FK_{L}_')
+    mymkdir(f'datasets/FK_{L}_/train')
+    mymkdir(f'datasets/FK_{L}_/test')
+    torch.save(H0, f'datasets/FK_{L}_/train/dataset.pt')
+    torch.save(H0, f'datasets/FK_{L}_/test/dataset.pt')
+    torch.save(SE, f'datasets/FK_{L}_/train/SE.pt')
+    torch.save(SE, f'datasets/FK_{L}_/test/SE.pt')
+    labels = torch.stack((U, T, torch.cat((torch.zeros(23), torch.ones(47)))), dim=1)
+    print(labels)
+    torch.save(labels, f'datasets/FK_{L}_/train/labels.pt')
+    torch.save(labels, f'datasets/FK_{L}_/test/labels.pt')
+
+
+    exit(0)
+
     L = 10
     T = 0.1
     Net = 'Naive_2d_sf_0'

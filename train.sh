@@ -3,14 +3,14 @@ gpu=0
 threads=16
 
 # Parameters of training
-L=28
-data=MNIST
+L=12
+data=Ins_12_d0.2
 adj=None
-Net=CMedian_g_no_0
+Net=Naive_test
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
-output_size=1
+output_size=2
 z=1e-3j
 restr=False       # False: fc, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
 diago=False       # True, False, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
@@ -20,9 +20,9 @@ bound=1         # initial bound
 entanglement=False   # False, int or float
 delta=0
 tc=None
-gradsnorm=2
+gradsnorm=False
 
-loss=BCE   # NLL, CE, BCE, BCEWL
+loss=CE   # NLL, CE, BCE, BCEWL
 opt=Adam
 lr=1e-3
 wd=0
