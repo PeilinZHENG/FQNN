@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     L = 10  # size = L ** 2
     Net = 'CNaive_2d_0'
-    T = 0.11
+    T = 0.14
     save = True
     show = True
 
