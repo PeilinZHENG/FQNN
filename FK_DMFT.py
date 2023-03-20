@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     L = 10  # size = L ** 2
     Net = 'CNaive_2d_0'
-    T = 0.15
+    T = 0.10
     save = True
     show = True
 
@@ -206,8 +206,8 @@ if __name__ == "__main__":
     if '2d' in Net:
         mymkdir(f'results/FK_{L}/SE+OP')
         try:
-            SEs = torch.load(f'results/FK_{L}/SE+OP/SE.pt')
-            OP = torch.load(f'results/FK_{L}/SE+OP/OP.pt')
+            SEs = torch.load(f'results/FK_{L}/SE+OP/SE_{T[0].item():.3f}.pt')
+            OP = torch.load(f'results/FK_{L}/SE+OP/OP_{T[0].item():.3f}.pt')
         except FileNotFoundError:
             SEs, OP = [], []
     else:
