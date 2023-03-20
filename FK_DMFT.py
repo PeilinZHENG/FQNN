@@ -180,7 +180,7 @@ if __name__ == "__main__":
     from utils import myceil
     import numpy as np
     import matplotlib.pyplot as plt
-    from torch.nn.functional import softmax
+    from torch.nn.functional import softmax, sigmoid
 
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
@@ -236,7 +236,10 @@ if __name__ == "__main__":
         '''compute phase diagram'''
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)
-        P.append(softmax(LDOS, dim=1)[:, 1].data.cpu())
+        if model.out.size == 1:
+            P.append(sigmoid(LDOS).data.cpu())
+        else:
+            P.append(softmax(LDOS, dim=1)[:, 1].data.cpu())
     P = torch.cat(P, dim=0).numpy()
     if type(OP) is list: OP = torch.cat(OP, dim=0)
     if '2d' in Net and type(SEs) is list:
