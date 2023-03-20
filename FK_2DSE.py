@@ -1,6 +1,7 @@
 import torch, os
 from FK_DMFT import DMFT
 import torch.multiprocessing as mp
+from tqdm import tqdm
 from utils import myceil
 import warnings
 warnings.filterwarnings('ignore')
@@ -51,7 +52,7 @@ if __name__ == "__main__":
         pool.close()
         pool.join()
     else:
-        for i in range(myceil(len(H0) / bz)):
+        for i in tqdm(range(myceil(len(H0) / bz))):
             SE.append(computeSE(i))
     SE = torch.cat(SE, dim=0)
     torch.save(SE, '{}/SE.pt'.format(path))  # (amount, scf.count, L ** 2)

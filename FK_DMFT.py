@@ -240,8 +240,8 @@ if __name__ == "__main__":
     P = torch.cat(P, dim=0).numpy()
     if type(OP) is list: OP = torch.cat(OP, dim=0)
     if '2d' in Net and type(SEs) is list:
-        torch.save(torch.cat(SEs, dim=0), f'results/FK_{L}/SE.pt')
-        torch.save(OP, f'results/FK_{L}/OP.pt')
+        torch.save(torch.cat(SEs, dim=0), f'results/FK_{L}/SE_{T[0].item():.3f}.pt')
+        torch.save(OP, f'results/FK_{L}/OP_{T[0].item():.3f}.pt')
     OP = OP.numpy()
     U = U.numpy()
 
