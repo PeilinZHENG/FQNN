@@ -151,8 +151,8 @@ if __name__ == "__main__":
     torch.manual_seed(0)
 
     L = 10  # size = L ** 2
-    Net = 'Naive_2d_sf_0'
-    T = 0.11
+    Net = 'CNaive_2d_0'
+    T = 0.1
     save = True
     show = True
 
@@ -185,7 +185,7 @@ if __name__ == "__main__":
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
     model_path = 'models/{}/{}'.format(data, Net)
-    model = Network(Net[:Net.index('_')], L ** 2, 2, 100, 64, None, double=True)
+    model = Network(Net[:Net.index('_')], L ** 2, 1 if Net.startswith('C') else 2, 100, 64, None, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
     model.load_state_dict(checkpoint['state_dict'])
     model = model.to(device)
@@ -202,13 +202,29 @@ if __name__ == "__main__":
 
     '''compute self-energy by DMFT'''
     bz = 75
-    P, OP = [], []
+    P = []
+    if '2d' in Net:
+        try:
+            SEs = torch.load(f'results/FK_{L}/SE.pt')
+            OP = torch.load(f'results/FK_{L}/OP.pt')
+        except FileNotFoundError:
+            SEs, OP = [], []
+    else:
+        OP = []
     for i in range(myceil(len(U) / bz)):
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
         T_batch = T[i * bz:(i + 1) * bz].to(device)
         U_batch = U[i * bz:(i + 1) * bz].to(device)
-        SE, op = scf(T_batch, H0_batch, U_batch, model=None if '2d' in Net else model, reOP=True,
-                     prinfo=True if i == 0 else False)  # (bz, scf.count, size)
+        if '2d' in Net:
+            if type(SEs) is torch.Tensor:
+                SE = SEs[i * bz:(i + 1) * bz].to(device)
+            else:
+                SE, op = scf(T_batch, H0_batch, U_batch, model=None, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
+                SEs.append(SE.cpu())
+                OP.append(op.cpu())
+        else:
+            SE, op = scf(T_batch, H0_batch, U_batch, model=model, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
+            OP.append(op.cpu())
         if Net.startswith('C') or 'sf' in Net:
             SE = SE[:, count:count + 1]   # (bz, 1, size)
             if '2d' in Net:
@@ -221,9 +237,12 @@ if __name__ == "__main__":
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)
         P.append(softmax(LDOS, dim=1)[:, 1].data.cpu())
-        OP.append(op.cpu())
     P = torch.cat(P, dim=0).numpy()
-    OP = torch.cat(OP, dim=0).numpy()
+    if type(OP) is list: OP = torch.cat(OP, dim=0)
+    if '2d' in Net and type(SEs) is list:
+        torch.save(torch.cat(SEs, dim=0), f'results/FK_{L}/SE.pt')
+        torch.save(OP, f'results/FK_{L}/OP.pt')
+    OP = OP.numpy()
     U = U.numpy()
 
     '''plot phase diagram'''
