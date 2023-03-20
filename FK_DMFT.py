@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     L = 10  # size = L ** 2
     Net = 'CNaive_2d_0'
-    T = 0.1
+    T = 0.11
     save = True
     show = True
 
@@ -204,9 +204,10 @@ if __name__ == "__main__":
     bz = 75
     P = []
     if '2d' in Net:
+        mymkdir(f'results/FK_{L}/SE+OP')
         try:
-            SEs = torch.load(f'results/FK_{L}/SE.pt')
-            OP = torch.load(f'results/FK_{L}/OP.pt')
+            SEs = torch.load(f'results/FK_{L}/SE+OP/SE.pt')
+            OP = torch.load(f'results/FK_{L}/SE+OP/OP.pt')
         except FileNotFoundError:
             SEs, OP = [], []
     else:
@@ -243,8 +244,8 @@ if __name__ == "__main__":
     P = torch.cat(P, dim=0).numpy()
     if type(OP) is list: OP = torch.cat(OP, dim=0)
     if '2d' in Net and type(SEs) is list:
-        torch.save(torch.cat(SEs, dim=0), f'results/FK_{L}/SE_{T[0].item():.3f}.pt')
-        torch.save(OP, f'results/FK_{L}/OP_{T[0].item():.3f}.pt')
+        torch.save(torch.cat(SEs, dim=0), f'results/FK_{L}/SE+OP/SE_{T[0].item():.3f}.pt')
+        torch.save(OP, f'results/FK_{L}/SE+OP/OP_{T[0].item():.3f}.pt')
     OP = OP.numpy()
     U = U.numpy()
 
