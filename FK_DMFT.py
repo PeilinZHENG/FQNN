@@ -138,7 +138,7 @@ if __name__ == "__main__":
     warnings.filterwarnings('ignore')
 
     threads = 8
-    os.environ['CUDA_VISIBLE_DEVICES'] = '5'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     os.environ['OMP_NUM_THREADS'] = str(threads)
     os.environ['OPENBLAS_NUM_THREADS'] = str(threads)
@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     L = 14  # size = L ** 2
     Net = 'Naive_0'
-    T = 0.13
+    T = 0.12
     save = True
     show = True
 
