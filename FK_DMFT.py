@@ -152,7 +152,7 @@ if __name__ == "__main__":
 
     L = 10  # size = L ** 2
     Net = 'CNaive_2d_0'
-    T = 0.14
+    T = 0.15
     save = True
     show = True
 
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     from utils import myceil
     import numpy as np
     import matplotlib.pyplot as plt
-    from torch.nn.functional import softmax, sigmoid
+    from torch.nn.functional import softmax, tanh, relu
 
     '''construct FQNN'''
     data = 'FK_{}'.format(L)
@@ -238,7 +238,7 @@ if __name__ == "__main__":
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)
         if model.out.size == 1:
-            P.append(sigmoid(LDOS).data.cpu())
+            P.append(tanh(relu(LDOS / 2)).data.cpu())
         else:
             P.append(softmax(LDOS, dim=1)[:, 1].data.cpu())
     P = torch.cat(P, dim=0).numpy()
