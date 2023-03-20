@@ -138,7 +138,7 @@ if __name__ == "__main__":
     warnings.filterwarnings('ignore')
 
     threads = 8
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '5'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     os.environ['OMP_NUM_THREADS'] = str(threads)
     os.environ['OPENBLAS_NUM_THREADS'] = str(threads)
@@ -150,9 +150,9 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 10  # size = L ** 2
-    Net = 'CNaive_2d_0'
-    T = 0.10
+    L = 14  # size = L ** 2
+    Net = 'Naive_0'
+    T = 0.13
     save = True
     show = True
 
