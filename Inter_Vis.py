@@ -26,10 +26,10 @@ torch.set_num_threads(1)
 
 amount = 100
 L = 12
-data = 'MNIST'
-Net = 'Relu_no_0'
-file = 'GRADIENT'
-save, show = True, False
+data = 'FK_12_'
+Net = 'Naive_2d_sf_0'
+file = ''
+save, show = False, True
 addpath = None #'Sig_0'
 
 
@@ -227,7 +227,8 @@ def LossAndAccuracy(path):
     if data.endswith('MNIST'):
         title = data
     else:
-        title = 'Normal VS Topological'
+        # title = 'Normal VS Topological'
+        title = 'All omega'
     plot2axisfig(loss, 'loss', accuracy, 'accuarcy', title)
     if save:
         np.save('{}/{}.npy'.format(dircheck(data, file, Net), 'loss'), loss)
@@ -361,6 +362,7 @@ def roc_curve(model, z, double, scale, device):
 if __name__ == "__main__":
     path = 'models/{}/{}/{}/info.txt'.format(data, file, Net)
     LossAndAccuracy(path)
+    exit(0)
 
     if not data.endswith('MNIST') and file != 'CLASSICAL' and file != 'GRADIENT':
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

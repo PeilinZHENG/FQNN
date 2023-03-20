@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=5
+gpu=0
 threads=8
 
 # Parameters of DMFT
@@ -22,7 +22,7 @@ output_size=2
 restr=False       # False: fc, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
 diago=False       # True, False, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
 hermi=True        # True, False, 0: naive hermi
-bound=0.1         # initial bound
+bound=1         # initial bound
 
 entanglement=False   # False, int or float
 delta=0
@@ -31,7 +31,7 @@ gradsnorm=False
 
 loss=CE   # NLL, CE, BCE, BCEWL
 opt=Adam
-lr=1e-2
+lr=5e-3
 wd=0
 betas=0.9,0.999
 sch=StepLR
@@ -40,11 +40,11 @@ ss=20
 drop=0
 disor=0
 
-epochs=100
+epochs=101
 workers=8
 batchsize=10
 print_freq=3
-save_freq=1
+save_freq=10
 seed=0
 
 
@@ -68,5 +68,5 @@ python FK_Train.py \
   --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm --seed $seed \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \
   --drop $drop --disor $disor --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale \
-  --SC2D --lars
+  --lars --SC2D
 
