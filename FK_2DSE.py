@@ -11,9 +11,9 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
 # parameters
-L = 14
-TYPE = 'test'
-processors = 0
+L = 12
+TYPE = 'train'
+processors = 40
 if processors == 0: bz = 20
 # DMFT configs
 count = 20
@@ -24,11 +24,13 @@ filling = 0.5
 tol_sc = 1e-6
 tol_bi = 1e-6
 double = True
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
 
 
-def computeSE(i, bz, scf):
-    return scf(target[i * bz:(i + 1) * bz, 1], H0[i * bz:(i + 1) * bz], target[i * bz:(i + 1) * bz, 0]) # (bz, scf.count, L ** 2)
+def computeSE(i, bz, scf, path):
+    SE = scf(target[i * bz:(i + 1) * bz, 1], H0[i * bz:(i + 1) * bz], target[i * bz:(i + 1) * bz, 0])
+    torch.save(SE, f'{path}/SE_{i}.pt')
+    return SE   # (bz, scf.count, L ** 2)
 
 
 if __name__ == "__main__":
@@ -49,7 +51,7 @@ if __name__ == "__main__":
         SE = []
         mp.set_start_method('fork', force=True)
         pool = mp.Pool(processes=processors)
-        res = pool.map(partial(computeSE, bz=myceil(len(H0) / processors), scf=scf), range(processors))
+        res = pool.map(partial(computeSE, bz=myceil(len(H0) / processors), scf=scf, path=path), range(processors))
         for se in res: SE.append(se)
         pool.close()
         pool.join()
