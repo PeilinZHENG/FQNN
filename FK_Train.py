@@ -558,7 +558,7 @@ def validate(val_ldr, model, criterion, scf, args):
             if args.SC2D:  # H0: (bz, scf.count, size, size)
                 if args.SF:
                     H0 = H0[:, args.count:args.count + 1]  # (bz, 1, size, size)
-                    model.z = pkg[1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
+                    model.z = pkg[1][:, 0].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
                               scf.iomega0[0, args.count]   # (bz,)
                 else:
                     model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
