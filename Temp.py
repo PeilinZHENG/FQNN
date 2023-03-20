@@ -58,8 +58,9 @@ if __name__ == "__main__":
     L = 12
     SE = torch.from_numpy(data['SE'])
     OP = torch.from_numpy(data['op'])
-    # torch.save(OP, 'results/FK_12_/SE+OP/SE_0.020.pt')
-    # torch.save(OP, 'results/FK_12_/SE+OP/OP_0.020.pt')
+    torch.save(SE, 'results/FK_12_/SE+OP/SE_0.020.pt')
+    torch.save(OP, 'results/FK_12_/SE+OP/OP_0.020.pt')
+    exit(0)
     U = torch.from_numpy(data['U'])
     T = torch.from_numpy(data['T'])
     mu = U / 2

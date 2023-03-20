@@ -151,7 +151,8 @@ if __name__ == "__main__":
     torch.manual_seed(0)
 
     L = 12  # size = L ** 2
-    Net = 'Naive_2d_0'
+    data = 'FK_{}_'.format(L)
+    Net = 'Naive_2d_sf_0'
     T = 0.02
     save = True
     show = True
@@ -183,7 +184,6 @@ if __name__ == "__main__":
     from torch.nn.functional import softmax, tanh, relu
 
     '''construct FQNN'''
-    data = 'FK_{}'.format(L)
     model_path = 'models/{}/{}'.format(data, Net)
     model = Network(Net[:Net.index('_')], L ** 2, 1 if Net.startswith('C') else 2, 100, 64, None, double=True)
     checkpoint = torch.load('{}/model_best.pth.tar'.format(model_path), map_location="cpu")
@@ -195,19 +195,22 @@ if __name__ == "__main__":
     U = 0.1 + 0.01 * torch.arange(70)#torch.linspace(1., 4., 150)
     mu = U / 2.
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
-    PTPs = {'0.100': (1.5, 1.76), '0.110': (1.7, 2.01), '0.120': (1.8, 2.28), '0.130': (2.0, 2.6), '0.140': (2.2, 3.03),
-            '0.150': (2.4, 3.99)}
-    PTP, QMCPTP = PTPs[f'{T:.3f}']
+    PTPs = {'0.020':(0.33, 0.392), '0.100': (1.5, 1.76), '0.110': (1.7, 2.01), '0.120': (1.8, 2.28),
+            '0.130': (2.0, 2.6), '0.140': (2.2, 3.03), '0.150': (2.4, 3.99)}
+    try:
+        PTP, QMCPTP = PTPs[f'{T:.3f}']
+    except KeyError:
+        PTP, QMCPTP = None, None
     T = T * torch.ones(len(U))
 
     '''compute self-energy by DMFT'''
     bz = 75
     P = []
     if '2d' in Net:
-        mymkdir(f'results/FK_{L}/SE+OP')
+        mymkdir(f'results/{data}/SE+OP')
         try:
-            SEs = torch.load(f'results/FK_{L}/SE+OP/SE_{T[0].item():.3f}.pt')
-            OP = torch.load(f'results/FK_{L}/SE+OP/OP_{T[0].item():.3f}.pt')
+            SEs = torch.load(f'results/{data}/SE+OP/SE_{T[0].item():.3f}.pt')
+            OP = torch.load(f'results/{data}/SE+OP/OP_{T[0].item():.3f}.pt')
         except FileNotFoundError:
             SEs, OP = [], []
     else:
@@ -227,6 +230,7 @@ if __name__ == "__main__":
             SE, op = scf(T_batch, H0_batch, U_batch, model=model, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
             OP.append(op.cpu())
         if Net.startswith('C') or 'sf' in Net:
+            print(SE.shape)
             SE = SE[:, count:count + 1]   # (bz, 1, size)
             if '2d' in Net:
                 model.z = T_batch.to(device=device, dtype=scf.iomega0.dtype) * scf.iomega0[0, count]  # (bz,)
@@ -244,8 +248,8 @@ if __name__ == "__main__":
     P = torch.cat(P, dim=0).numpy()
     if type(OP) is list: OP = torch.cat(OP, dim=0)
     if '2d' in Net and type(SEs) is list:
-        torch.save(torch.cat(SEs, dim=0), f'results/FK_{L}/SE+OP/SE_{T[0].item():.3f}.pt')
-        torch.save(OP, f'results/FK_{L}/SE+OP/OP_{T[0].item():.3f}.pt')
+        torch.save(torch.cat(SEs, dim=0), f'results/{data}/SE+OP/SE_{T[0].item():.3f}.pt')
+        torch.save(OP, f'results/{data}/SE+OP/OP_{T[0].item():.3f}.pt')
     OP = OP.numpy()
     U = U.numpy()
 
