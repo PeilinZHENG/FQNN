@@ -196,7 +196,7 @@ if __name__ == "__main__":
     L = 14  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_0'
-    T = 0.14
+    T = 0.15
     save = True
     show = True
 
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     maxEpoch = 5000
-    milestone = 100
+    milestone = 0
     filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-6
