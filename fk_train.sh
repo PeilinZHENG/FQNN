@@ -7,6 +7,7 @@ count=20
 iota=0
 momentum=0.5
 maxEpoch=100
+milestone=50
 filling=0.5
 tol_sc=1e-6
 tol_bi=1e-6
@@ -63,9 +64,9 @@ conda activate pytorch
 
 python FK_Train.py \
   -t $threads -j $workers -b $batchsize -p $print_freq -s $save_freq --epochs $epochs --gpu $gpu --count $count \
-  --iota $iota --momentum $momentum --maxEpoch $maxEpoch --filling $filling --tol_sc $tol_sc --tol_bi $tol_bi\
-  --data $data --opt $opt --loss $loss --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss \
-  --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm --seed $seed \
+  --iota $iota --momentum $momentum --maxEpoch $maxEpoch --milestone $milestone --filling $filling --tol_sc $tol_sc \
+  --tol_bi $tol_bi --opt $opt --loss $loss --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss \
+  --data $data --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm --seed $seed \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \
   --drop $drop --disor $disor --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale \
   --lars --SC2D
