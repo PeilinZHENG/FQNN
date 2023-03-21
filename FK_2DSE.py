@@ -13,19 +13,19 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 # parameters
 L = 12
 TYPE = 'train'
-processors = 20
-if processors == 0: bz = 20
+processors = 0
+if processors == 0: bz = 40
 # DMFT configs
 count = 20
 iota = 0.
 momentum = 0.5
-maxEpoch = 5000
-milestone = 100
+maxEpoch = 1000
+milestone = 30
 filling = 0.5
 tol_sc = 1e-6
 tol_bi = 1e-6
 double = True
-device = torch.device("cpu")
+device = torch.device("cuda")
 
 
 def computeSE(i, bz, scf, path):
