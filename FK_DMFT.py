@@ -164,7 +164,7 @@ class DMFT:
                     cur_tol_sc = self.tol_sc * (len(bad_idx) / bz) ** 0.5
                     if prinfo:
                         print("{} loop remain: {}".format(l, len(bad_idx)))
-                        print(torch.max(idx))
+                        print(idx)
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
         OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
         if reOP:
@@ -199,7 +199,7 @@ if __name__ == "__main__":
     L = 14  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_0'
-    T = 0.13
+    T = 0.14
     save = True
     show = True
 
