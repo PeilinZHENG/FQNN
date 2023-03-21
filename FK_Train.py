@@ -416,7 +416,11 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
             tra_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
             if args.SF:
                 H0 = H0 + torch.diag_embed(SE[:, args.count:args.count + 1])  # (bz, 1, size, size)
-                model.z = model.z[:, args.count, 0]   # (bz,)
+                if model.z.size(0) != bz:
+                    model.z = pkg[-1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
+                              scf.iomega0[0, args.count]  # (bz,)
+                else:
+                    model.z = model.z[:, args.count, 0]  # (bz,)
             else:
                 H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
                 if model.z.size(0) != bz:
@@ -576,7 +580,11 @@ def validate(val_ldr, model, criterion, scf, args):
                 val_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
                 if args.SF:
                     H0 = H0 + torch.diag_embed(SE[:, args.count:args.count + 1])  # (bz, 1, size, size)
-                    model.z = model.z[:, args.count, 0]  # (bz,)
+                    if model.z.size(0) != bz:
+                        model.z = pkg[-1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
+                                  scf.iomega0[0, args.count]   # (bz,)
+                    else:
+                        model.z = model.z[:, args.count, 0]  # (bz,)
                 else:
                     H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
                     if model.z.size(0) != bz:
