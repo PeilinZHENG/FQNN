@@ -205,7 +205,7 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     maxEpoch = 5000
-    milestone = 0
+    milestone = 30
     filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-6
