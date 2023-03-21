@@ -419,6 +419,9 @@ def train(tra_ldr, model, criterion, optimizer, scf, epoch, args):
                 model.z = model.z[:, args.count, 0]   # (bz,)
             else:
                 H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
+                if model.z.size(0) != bz:
+                    model.z = (pkg[-1][:, 1:2].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
+                               scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
 
         # compute output
         output = model(H0)
@@ -576,6 +579,9 @@ def validate(val_ldr, model, criterion, scf, args):
                     model.z = model.z[:, args.count, 0]  # (bz,)
                 else:
                     H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
+                    if model.z.size(0) != bz:
+                        model.z = (pkg[-1][:, 1:2].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
+                                   scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
 
             # compute output
             output = model(H0)

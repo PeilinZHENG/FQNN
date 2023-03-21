@@ -91,7 +91,7 @@ class DMFT:
         else:
             E_mu = E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
         T = T.unsqueeze(-1).to(device=device, dtype=dtype) # (bz, 1)
-        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1) #(bz, self.count, 1)
+        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1) # (bz, self.count, 1)
         H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, self.count, size, size)
         U = U[:, None, None].to(device=device, dtype=dtype) # (bz, 1, 1)
         if model is None:
@@ -154,9 +154,9 @@ class DMFT:
                             best_nf[idx[better_idx]] = nf[better_idx]
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
                         idx = idx[bad_idx]
-                    SE, min_errors = SE[bad_idx], min_errors[bad_idx]
-                    H_omega, WeissInv, Gimp = H_omega[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
                     T, iomega, U, E_mu = T[bad_idx], iomega[bad_idx], U[bad_idx], E_mu[bad_idx]
+                    H_omega, WeissInv, Gimp = H_omega[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
+                    SE, min_errors, model.z = SE[bad_idx], min_errors[bad_idx], iomega
                     cur_tol_sc = self.tol_sc * (len(bad_idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(bad_idx)))
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
