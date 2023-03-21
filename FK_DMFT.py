@@ -152,6 +152,7 @@ class DMFT:
                             min_errors[better_idx] = new_errors[better_idx]
                             best_SE[idx[better_idx]] = SE[better_idx]
                             best_nf[idx[better_idx]] = nf[better_idx]
+                            print(idx[better_idx])
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
                         idx = idx[bad_idx]
                     SE, T, iomega, U, E_mu = SE[bad_idx], T[bad_idx], iomega[bad_idx], U[bad_idx], E_mu[bad_idx]
@@ -161,7 +162,9 @@ class DMFT:
                     else:
                         H0, model.z = H0[bad_idx], iomega
                     cur_tol_sc = self.tol_sc * (len(bad_idx) / bz) ** 0.5
-                    if prinfo: print("{} loop remain: {}".format(l, len(bad_idx)))
+                    if prinfo:
+                        print("{} loop remain: {}".format(l, len(bad_idx)))
+                        print(torch.max(idx))
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
         OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
         if reOP:
@@ -196,7 +199,7 @@ if __name__ == "__main__":
     L = 14  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_0'
-    T = 0.11
+    T = 0.13
     save = True
     show = True
 
