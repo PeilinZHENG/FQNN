@@ -174,6 +174,14 @@ class DMFT:
         else:
             return best_SE  # (bz, self.count, size)
 
+def op1(nf):
+    L = int(nf.shape[-1] ** 0.5)
+    nf = nf.view(-1, L, L)
+    op = torch.stack(((nf[:, 0, 0] - nf[:, 0, 1]).abs(), (nf[:, 0, 0] - nf[:, 1, 0]).abs()), dim=0)
+    return torch.min(op, dim=0)[0]
+
+
+
 
 if __name__ == "__main__":
     from FK_Data import Ham
@@ -193,7 +201,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 14  # size = L ** 2
+    L = 12  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_0'
     T = 0.15
@@ -201,10 +209,10 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    count = 20
+    count = 100
     iota = 0.
     momentum = 0.5
-    maxEpoch = 5000
+    maxEpoch = 500
     milestone = 30
     filling = 0.5
     tol_sc = 1e-6
@@ -212,15 +220,16 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, filling, tol_sc, tol_bi, device)
 
     '''2D test'''
-    # T = torch.tensor([0.15, 0.25], device=device)
-    # U = torch.tensor([4., 4.], device=device)
-    # mu = U / 2.
-    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
-    # t = time.time()
-    # SE, OP, bad_idx = scf(T, H0, U, reOP=True, reBad=True, prinfo=True)  # (bz, 1, size)
-    # print(bad_idx)
-    # print(time.time() - t)
-    # exit(0)
+    T = torch.tensor([0.005, 0.005], device=device)
+    U = torch.tensor([1., 1.], device=device)
+    tp = torch.tensor([0.1, 1.4], device=device)
+    mu = torch.zeros(len(U))#U / 2
+    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1).to(device)
+    t = time.time()
+    SE, OP, bad_idx = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op1,), prinfo=True)  # (bz, 1, size)
+    print(bad_idx)
+    print(time.time() - t)
+    exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil

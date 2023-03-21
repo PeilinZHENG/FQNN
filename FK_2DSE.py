@@ -11,7 +11,7 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
 # parameters
-L = 12
+L = 14
 TYPE = 'train'
 processors = 0
 if processors == 0: bz = 40
