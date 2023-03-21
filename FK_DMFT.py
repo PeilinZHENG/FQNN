@@ -159,7 +159,7 @@ class DMFT:
                     if model is None:
                         H_omega = H_omega[bad_idx]
                     else:
-                        model.z = iomega
+                        H0, model.z = H0[bad_idx], iomega
                     cur_tol_sc = self.tol_sc * (len(bad_idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(bad_idx)))
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
