@@ -160,7 +160,7 @@ class DMFT:
                     cur_tol_sc = self.tol_sc * (len(bad_idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(bad_idx)))
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
-        OP = torch.stack([self.calc_OP(f, best_nf, prinfo) for f in OPfuns], dim=0)
+        OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
                 return best_SE, OP, [bad_idx, min_errors]
