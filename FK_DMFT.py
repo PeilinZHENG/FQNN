@@ -193,10 +193,10 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 12  # size = L ** 2
-    data = 'FK_{}_'.format(L)
-    Net = 'Naive_2d_0'
-    T = 0.02
+    L = 14  # size = L ** 2
+    data = 'FK_{}'.format(L)
+    Net = 'Naive_0'
+    T = 0.10
     save = True
     show = True
 
@@ -237,7 +237,7 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
-    U = 0.1 + 0.01 * torch.arange(70)#torch.linspace(1., 4., 150)
+    U = torch.linspace(1., 4., 150)
     mu = U / 2.
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
     PTPs = {'0.020':(0.33, 0.392), '0.100': (1.5, 1.76), '0.110': (1.7, 2.01), '0.120': (1.8, 2.28),
