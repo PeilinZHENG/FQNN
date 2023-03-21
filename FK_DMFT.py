@@ -134,7 +134,7 @@ class DMFT:
                 else:
                     best_SE[idx], best_nf[idx] = SE, nf
                 if reBad:
-                    bad_idx = torch.tensor([], dtype=torch.long, device=new_errors.device)
+                    idx = torch.tensor([], dtype=torch.long, device=new_errors.device)
                     min_errors = torch.tensor([], dtype=new_errors.dtype, device=new_errors.device)
                 break
             else:
@@ -154,20 +154,23 @@ class DMFT:
                             best_nf[idx[better_idx]] = nf[better_idx]
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
                         idx = idx[bad_idx]
-                    T, iomega, U, E_mu = T[bad_idx], iomega[bad_idx], U[bad_idx], E_mu[bad_idx]
-                    H_omega, WeissInv, Gimp = H_omega[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
-                    SE, min_errors, model.z = SE[bad_idx], min_errors[bad_idx], iomega
+                    SE, T, iomega, U, E_mu = SE[bad_idx], T[bad_idx], iomega[bad_idx], U[bad_idx], E_mu[bad_idx]
+                    min_errors, WeissInv, Gimp = min_errors[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
+                    if model is None:
+                        H_omega = H_omega[bad_idx]
+                    else:
+                        model.z = iomega
                     cur_tol_sc = self.tol_sc * (len(bad_idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(bad_idx)))
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
         OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
-                return best_SE, OP, [bad_idx, min_errors]
+                return best_SE, OP, [idx, min_errors]
             else:
                 return best_SE, OP
         elif reBad:
-            return best_SE, [bad_idx, min_errors]
+            return best_SE, [idx, min_errors]
         else:
             return best_SE  # (bz, self.count, size)
 
@@ -273,12 +276,13 @@ if __name__ == "__main__":
             OP.append(op.cpu().squeeze(0))
         if Net.startswith('C') or 'sf' in Net:
             SE = SE[:, count:count + 1]   # (bz, 1, size)
-            if '2d' in Net:
+            if '2d' in Net or model.z.size(0) != T_batch.shape[0]:
                 model.z = T_batch.to(device=device, dtype=scf.iomega0.dtype) * scf.iomega0[0, count]  # (bz,)
             else:
                 model.z = model.z[:, count, 0]  # (bz,)
-        elif '2d' in Net:
+        elif '2d' in Net or model.z.size(0) != T_batch.shape[0]:
             model.z = (T_batch[:, None].to(device=device, dtype=scf.iomega0.dtype) @ scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
+
         '''compute phase diagram'''
         H = H0_batch + torch.diag_embed(SE)
         LDOS = model(H)
