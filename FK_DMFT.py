@@ -209,15 +209,15 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, filling, tol_sc, tol_bi, device)
 
     '''2D test'''
-    T = torch.tensor([0.15, 0.25], device=device)
-    U = torch.tensor([4., 4.], device=device)
-    mu = U / 2.
-    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
-    t = time.time()
-    SE, OP, bad_idx = scf(T, H0, U, reOP=True, reBad=True, prinfo=True)  # (bz, 1, size)
-    print(bad_idx)
-    print(time.time() - t)
-    exit(0)
+    # T = torch.tensor([0.15, 0.25], device=device)
+    # U = torch.tensor([4., 4.], device=device)
+    # mu = U / 2.
+    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
+    # t = time.time()
+    # SE, OP, bad_idx = scf(T, H0, U, reOP=True, reBad=True, prinfo=True)  # (bz, 1, size)
+    # print(bad_idx)
+    # print(time.time() - t)
+    # exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil
