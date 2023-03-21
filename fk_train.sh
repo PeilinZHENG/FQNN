@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=5
+gpu=0
 threads=8
 
 # Parameters of DMFT
@@ -14,7 +14,7 @@ tol_bi=1e-6
 
 # Parameters of training
 L=12
-data=FK_${L}_
+data=FK_${L}
 Net=Naive_2d_0
 input_size=$(($L*$L))
 embedding_size=100
