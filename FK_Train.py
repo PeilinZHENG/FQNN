@@ -107,7 +107,7 @@ parser.add_argument('--momentum', default=0., type=float,
                     help='momentum')
 parser.add_argument('--maxEpoch', default=100, type=int,
                     help='max epoch')
-parser.add_argument('--milestone', default=50, type=int,
+parser.add_argument('--milestone', default=30, type=int,
                     help='milestone')
 parser.add_argument('--filling', default=0.5, type=float,
                     help='Filling')
