@@ -1,14 +1,17 @@
 import torch
+from typing import Union
 from utils import mymkdir
 
 
 class DMFT:
-    def __init__(self, count=100, iota=0., momentum=0., maxEpoch=100, filling=None, tol_sc=1e-8, tol_bi=1e-6,
-                 device=torch.device('cpu'), double=True):
+    def __init__(self, count: int = 100, iota: float = 0., momentum: float = 0., maxEpoch: int = 100,
+                 milestone: Union[int, None] = None, filling: Union[float, None] = None, tol_sc: float = 1e-8,
+                 tol_bi: float = 1e-6, device: torch.device = torch.device('cpu'), double: bool = True):
         self.count = count * 2
         self.iota = iota
         self.momentum = momentum
         self.MAXEPOCH = maxEpoch
+        self.MILESTONE = maxEpoch if milestone is None or milestone > maxEpoch else milestone
         self.filling = filling
         self.tol_sc = tol_sc
         self.tol_bi = tol_bi
@@ -72,13 +75,14 @@ class DMFT:
             c[index] = a[index]
             a = c
 
-    def calc_OP(self, nf, prinfo=False):
-        op = (nf[:, 0, 0] - nf[:, 0, 1]).abs()
+    def calc_OP(self, fun, nf, prinfo=False):
+        op = fun(nf.squeeze(1))
         if prinfo: print('order parameter:\n', torch.round(op, decimals=3))
         return op
 
     @torch.no_grad()
-    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, reOP=False, prinfo=False):  # E_mu, U: (bz,)
+    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, reOP=False, reBad=False,
+                 OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # E_mu, U: (bz,)
         device, dtype = self.iomega0.device, self.iomega0.dtype
         bz, _, _, size = H0.shape
         if E_mu is None:
@@ -100,9 +104,11 @@ class DMFT:
             SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, self.count, size)
         else:
             SE = SEinit.to(device=device, dtype=dtype)
-        min_error = 1e10
-        best_SE = None
+        min_error, min_errors = 1e10, None
+        best_SE, best_nf = None, None
         if prinfo: best_nf = None
+        cur_tol_sc = self.tol_sc
+        avg_tol_sc = self.tol_sc / bz ** 0.5
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             if model is None:
@@ -118,18 +124,52 @@ class DMFT:
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
             if prinfo: print('<nf>={}'.format(torch.mean(nf).item()))
             '''4. compute new self-energy'''
-            error = torch.linalg.norm(Gimp - Gloc).item()
-            if error < self.tol_sc:
-                if prinfo: print("final error: {}".format(error))
-                return (SE, self.calc_OP(nf, prinfo)) if reOP else SE   # (bz, self.count, size)
+            new_errors = torch.linalg.norm(Gimp - Gloc, dim=(1, 2))
+            tot_error = torch.linalg.norm(new_errors).item()
+            if prinfo: print("{} loop tol: {}".format(l, cur_tol_sc))
+            if tot_error < cur_tol_sc:
+                if prinfo: print("final error: {}".format(tot_error))
+                if l <= self.MILESTONE:
+                    best_SE, best_nf = SE, nf
+                else:
+                    best_SE[idx], best_nf[idx] = SE, nf
+                if reBad:
+                    bad_idx = torch.tensor([], dtype=torch.long, device=new_errors.device)
+                    min_errors = torch.tensor([], dtype=new_errors.dtype, device=new_errors.device)
+                break
             else:
-                if error < min_error:
-                    min_error = error
-                    best_SE = SE
-                    if prinfo: best_nf = nf
+                if prinfo: print("{} loop error: {}".format(l, tot_error))
+                if l <= self.MILESTONE and tot_error < min_error:
+                    min_error, min_errors = tot_error, new_errors
+                    best_SE, best_nf = SE, nf
+                if l >= self.MILESTONE:
+                    if l == self.MILESTONE:
+                        bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
+                        idx = bad_idx
+                    else:
+                        better_idx = torch.nonzero((new_errors - min_errors) < 0, as_tuple=True)[0]
+                        if len(better_idx) > 0:
+                            min_errors[better_idx] = new_errors[better_idx]
+                            best_SE[idx[better_idx]] = SE[better_idx]
+                            best_nf[idx[better_idx]] = nf[better_idx]
+                        bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
+                        idx = idx[bad_idx]
+                    SE, min_errors = SE[bad_idx], min_errors[bad_idx]
+                    H_omega, WeissInv, Gimp = H_omega[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
+                    T, iomega, U, E_mu = T[bad_idx], iomega[bad_idx], U[bad_idx], E_mu[bad_idx]
+                    cur_tol_sc = self.tol_sc * (len(bad_idx) / bz) ** 0.5
+                    if prinfo: print("{} loop remain: {}".format(l, len(bad_idx)))
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
-                if prinfo: print("{} loop error: {}".format(l, error))
-        return (best_SE, self.calc_OP(best_nf, prinfo)) if reOP else best_SE  # (bz, self.count, size)
+        OP = torch.stack([self.calc_OP(f, best_nf, prinfo) for f in OPfuns], dim=0)
+        if reOP:
+            if reBad:
+                return best_SE, OP, [bad_idx, min_errors]
+            else:
+                return best_SE, OP
+        elif reBad:
+            return best_SE, [bad_idx, min_errors]
+        else:
+            return best_SE  # (bz, self.count, size)
 
 
 if __name__ == "__main__":
@@ -162,20 +202,22 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     maxEpoch = 5000
+    milestone = 100
     filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-6
-    scf = DMFT(count, iota, momentum, maxEpoch, filling, tol_sc, tol_bi, device)
+    scf = DMFT(count, iota, momentum, maxEpoch, milestone, filling, tol_sc, tol_bi, device)
 
     '''2D test'''
-    # T = torch.tensor([0.15, 0.25], device=device)
-    # U = torch.tensor([4., 4.], device=device)
-    # mu = U / 2.
-    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
-    # t = time.time()
-    # SE = scf(T, H0, U, prinfo=True)  # (bz, 1, size)
-    # print(time.time() - t)
-    # exit(0)
+    T = torch.tensor([0.15, 0.25], device=device)
+    U = torch.tensor([4., 4.], device=device)
+    mu = U / 2.
+    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
+    t = time.time()
+    SE, OP, bad_idx = scf(T, H0, U, reOP=True, reBad=True, prinfo=True)  # (bz, 1, size)
+    print(bad_idx)
+    print(time.time() - t)
+    exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil
@@ -225,10 +267,10 @@ if __name__ == "__main__":
             else:
                 SE, op = scf(T_batch, H0_batch, U_batch, model=None, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
                 SEs.append(SE.cpu())
-                OP.append(op.cpu())
+                OP.append(op.cpu().squeeze(0))
         else:
             SE, op = scf(T_batch, H0_batch, U_batch, model=model, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
-            OP.append(op.cpu())
+            OP.append(op.cpu().squeeze(0))
         if Net.startswith('C') or 'sf' in Net:
             SE = SE[:, count:count + 1]   # (bz, 1, size)
             if '2d' in Net:
