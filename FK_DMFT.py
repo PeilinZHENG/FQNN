@@ -1,6 +1,5 @@
 import torch
 from typing import Union
-from utils import mymkdir
 
 
 class DMFT:
@@ -231,7 +230,7 @@ if __name__ == "__main__":
     exit(0)
 
     from FK_rgfnn import Network
-    from utils import myceil
+    from utils import myceil, mymkdir
     import numpy as np
     import matplotlib.pyplot as plt
     from torch.nn.functional import softmax, tanh, relu
