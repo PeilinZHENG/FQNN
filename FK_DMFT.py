@@ -100,8 +100,9 @@ class DMFT:
             model.z = iomega
         '''0. initialize self-energy'''
         if SEinit is None:
-            # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype) # (bz, self.count, size)
-            SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, self.count, size)
+            # SE = torch.zeros((bz, self.count, size), device=device).type(dtype) # (bz, self.count, size)
+            # SE = 0.1 * torch.randn((bz, self.count, size), device=device).type(dtype) # (bz, self.count, size)
+            SE = 0.1 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.) # (bz, self.count, size)
         else:
             SE = SEinit.to(device=device, dtype=dtype)
         min_error, min_errors = 1e10, None
@@ -174,13 +175,12 @@ class DMFT:
         else:
             return best_SE  # (bz, self.count, size)
 
-def op1(nf):
+
+def opf(nf):
     L = int(nf.shape[-1] ** 0.5)
     nf = nf.view(-1, L, L)
     op = torch.stack(((nf[:, 0, 0] - nf[:, 0, 1]).abs(), (nf[:, 0, 0] - nf[:, 1, 0]).abs()), dim=0)
     return torch.min(op, dim=0)[0]
-
-
 
 
 if __name__ == "__main__":
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    count = 100
+    count = 20
     iota = 0.
     momentum = 0.5
     maxEpoch = 500
@@ -220,14 +220,13 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, filling, tol_sc, tol_bi, device)
 
     '''2D test'''
-    T = torch.tensor([0.005, 0.005], device=device)
+    T = torch.tensor([0.01, 0.01], device=device)
     U = torch.tensor([1., 1.], device=device)
     tp = torch.tensor([0.1, 1.4], device=device)
-    mu = torch.zeros(len(U))#U / 2
+    mu = U / 2
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1).to(device)
     t = time.time()
-    SE, OP, bad_idx = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op1,), prinfo=True)  # (bz, 1, size)
-    print(bad_idx)
+    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(opf,), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     exit(0)
 
