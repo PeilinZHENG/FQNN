@@ -1,13 +1,13 @@
 ## Parameters of GPU
-gpu=0
+gpu=5
 threads=8
 
 # Parameters of DMFT
 count=20
 iota=0
 momentum=0.5
-maxEpoch=100
-milestone=50
+maxEpoch=200
+milestone=30
 filling=0.5
 tol_sc=1e-6
 tol_bi=1e-6
@@ -32,7 +32,7 @@ gradsnorm=False
 
 loss=CE   # NLL, CE, BCE, BCEWL
 opt=Adam
-lr=5e-3
+lr=1e-3
 wd=0
 betas=0.9,0.999
 sch=StepLR
@@ -43,8 +43,8 @@ disor=0
 
 epochs=101
 workers=8
-batchsize=10
-print_freq=3
+batchsize=128
+print_freq=7
 save_freq=10
 seed=0
 
@@ -69,5 +69,5 @@ python FK_Train.py \
   --data $data --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm --seed $seed \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \
   --drop $drop --disor $disor --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale \
-  --lars --SC2D
+  --SC2D
 
