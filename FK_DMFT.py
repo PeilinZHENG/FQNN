@@ -196,7 +196,7 @@ if __name__ == "__main__":
     L = 14  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_0'
-    T = 0.10
+    T = 0.11
     save = True
     show = True
 
