@@ -1,75 +1,86 @@
 import torch
 from typing import Union
+from functools import partial
 
 
 class DMFT:
     def __init__(self, count: int = 100, iota: float = 0., momentum: float = 0., maxEpoch: int = 100,
-                 milestone: Union[int, None] = None, filling: Union[float, None] = None, tol_sc: float = 1e-8,
-                 tol_bi: float = 1e-6, device: torch.device = torch.device('cpu'), double: bool = True):
+                 milestone: Union[int, None] = None, f_filling: Union[float, None] = None,
+                 d_filling: Union[float, None] = None, tol_sc: float = 1e-8, tol_bi: float = 1e-6,
+                 device: torch.device = torch.device('cpu'), double: bool = True):
         self.count = count * 2
         self.iota = iota
         self.momentum = momentum
         self.MAXEPOCH = maxEpoch
         self.MILESTONE = maxEpoch if milestone is None or milestone > maxEpoch else milestone
-        self.filling = filling
+        self.f_filling = f_filling
+        self.d_filling = d_filling
         self.tol_sc = tol_sc
         self.tol_bi = tol_bi
         self.iomega0 = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(0) + 1) * torch.pi  # (1, self.count)
         if double: self.iomega0 = self.iomega0.type(torch.complex128)
 
-    def calc_nf(self, WeissInv, T, iomega, U, E_mu):
-        z = torch.sum(torch.log(1 - U / WeissInv) * torch.exp(iomega * self.iota), dim=1) - E_mu / T # (bz, size)
-        return torch.nan_to_num(torch.sigmoid(z).real, nan=0.).unsqueeze(1)  # (bz, 1, size)
+    def calc_nd(self, mu, T, iomega, H):
+        if model is None:
+            Gloc = torch.diagonal((H + torch.diag_embed(mu.unsqueeze(-1).tile(1, 1, H0.shape[-1]))).inverse(), dim1=-2,
+                                  dim2=-1)  # (bz, self.count, size), here H0 is H_omega - SE
+        else:
+            Gloc = model(H - torch.diag_embed(mu.unsqueeze(-1).tile(1, 1, H0.shape[-1])), selfcons=True)  # (bz, self.count, size)
+        return (T * torch.sum(Gloc * torch.exp(-iomega * self.iota), dim=1)).real  # (bz, size)
 
-    def calc_nf_(self, WeissInv, T, iomega, U, E_mu):
-        z = torch.prod((1 - U / WeissInv).pow(torch.exp(iomega * self.iota)), dim=1).pow(-1) * torch.exp(E_mu / T) # (bz, size)
-        return torch.nan_to_num((1 + z).pow(-1).real, nan=0.).unsqueeze(1)  # (bz, 1, size)
+    def calc_nf(self, E_mu, T, iomega, UoverWI):
+        z = torch.sum(torch.log(1 - UoverWI) * torch.exp(iomega * self.iota), dim=1) - E_mu / T # (bz, size)
+        return torch.nan_to_num(torch.sigmoid(z).real, nan=0.)  # (bz, size)
 
-    def fix_filling(self, WeissInv, T, iomega, U, E_mu):
-        nf = self.calc_nf(WeissInv, T, iomega, U, E_mu)
-        return torch.mean(nf, dim=-1) - self.filling  # (bz, 1)
+    def calc_nf_(self, E_mu, T, iomega, UoverWI):
+        z = torch.prod((1 - UoverWI).pow(torch.exp(iomega * self.iota)), dim=1).pow(-1) * torch.exp(E_mu / T) # (bz, size)
+        return torch.nan_to_num((1 + z).pow(-1).real, nan=0.)  # (bz, size)
 
-    def bisection(self, fun, WeissInv, T, iomega, U, a, mingap=5.):
-        fa = fun(WeissInv, T, iomega, U, a)
+    def fix_filling(self, a, T, iomega, args, f_ele=True):
+        n = self.calc_nf(a, T, iomega, args) if f_ele else self.calc_nd(a, T, iomega, args)
+        return (torch.mean(n, dim=-1) - self.f_filling) if f_ele else (torch.mean(n, dim=-1) - self.d_filling)  # (bz,)
+
+    def bisection(self, fun, a, T, iomega, args, mingap=5.):
+        fa = fun(a, T, iomega, args)
         b = a + mingap
-        fb = fun(WeissInv, T, iomega, U, b)
+        fb = fun(b, T, iomega, args)
         for i in torch.nonzero(fa * fb > 0, as_tuple=True)[0]:
             if fa[i] > 0:
                 if fa[i] < fb[i]:
                     while fa[i] > 0:
                         b[i], fb[i] = a[i], fa[i]
                         a[i] = a[i] - mingap
-                        fa[i] = fun(WeissInv[i:i+1], T[i:i+1], iomega[i:i+1], U[i:i+1], a[i:i+1])
+                        fa[i] = fun(a[i:i+1], T[i:i+1], iomega[i:i+1], args[i:i+1])
                 else:
                     while fb[i] > 0:
                         a[i], fa[i] = b[i], fb[i]
                         b[i] = b[i] + mingap
-                        fb[i] = fun(WeissInv[i:i+1], T[i:i+1], iomega[i:i+1], U[i:i+1], b[i:i+1])
+                        fb[i] = fun(b[i:i+1], T[i:i+1], iomega[i:i+1], args[i:i+1])
             else:
                 if fa[i] < fb[i]:
                     while fb[i] < 0:
                         a[i], fa[i] = b[i], fb[i]
                         b[i] = b[i] + mingap
-                        fb[i] = fun(WeissInv[i:i+1], T[i:i+1], iomega[i:i+1], U[i:i+1], b[i:i+1])
+                        fb[i] = fun(b[i:i+1], T[i:i+1], iomega[i:i+1], args[i:i+1])
                 else:
                     while fa[i] < 0:
                         b[i], fb[i] = a[i], fa[i]
                         a[i] = a[i] - mingap
-                        fa[i] = fun(WeissInv[i:i+1], T[i:i+1], iomega[i:i+1], U[i:i+1], a[i:i+1])
+                        fa[i] = fun(a[i:i+1], T[i:i+1], iomega[i:i+1], args[i:i+1])
         index = torch.nonzero(torch.abs(fa) < self.tol_bi, as_tuple=True)
         if len(index[0]) > 0: b[index] = a[index]
         index = torch.nonzero(torch.abs(fb) < self.tol_bi, as_tuple=True)
         if len(index[0]) > 0: a[index] = b[index]
         while True:
             c = (a + b) / 2
-            fc = fun(WeissInv, T, iomega, U, c)
+            fc = fun(c, T, iomega, args)
             index = torch.nonzero(torch.abs(fc) < self.tol_bi, as_tuple=True)
             if len(index[0]) > 0:
                 a[index] = c[index]
                 b[index] = c[index]
             if torch.linalg.norm((b - a) / 2) < self.tol_bi:
                 return (b + a) / 2   # (bz, 1)
-            index = torch.nonzero(fc * fun(WeissInv, T, iomega, U, a) < 0, as_tuple=True)
+            index = torch.nonzero(fc * fun(a, T, iomega, args) < 0, as_tuple=True)
             b[index] = c[index]
             c[index] = a[index]
             a = c
@@ -85,10 +96,12 @@ class DMFT:
         device, dtype = self.iomega0.device, self.iomega0.dtype
         bz, _, _, size = H0.shape
         if E_mu is None:
-            assert self.filling is not None
+            assert self.f_filling is not None
             E_mu = torch.zeros((bz, 1), device=device, dtype=dtype)  # (bz, 1)
         else:
             E_mu = E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
+        if self.d_filling is not None:
+            mu = torch.zeros((bz, 1), device=device, dtype=dtype)  # (bz, 1)
         T = T.unsqueeze(-1).to(device=device, dtype=dtype) # (bz, 1)
         iomega = torch.matmul(T, self.iomega0).unsqueeze(-1) # (bz, self.count, 1)
         H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, self.count, size, size)
@@ -112,15 +125,19 @@ class DMFT:
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             if model is None:
+                if self.d_filling is not None:
+                    mu = self.bisection(partial(self.fix_filling, f_ele=False), mu, T, iomega,
+                                        H0 + torch.diag_embed(SE))
                 Gloc = torch.diagonal((H_omega - torch.diag_embed(SE)).inverse(), dim1=-2, dim2=-1)  # (bz, self.count, size)
             else:
                 Gloc = model(H0 + torch.diag_embed(SE), selfcons=True)  # (bz, self.count, size)
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
-            if self.filling is not None:
-                E_mu = self.bisection(self.fix_filling, WeissInv, T, iomega, U, E_mu)
-            nf = self.calc_nf(WeissInv, T, iomega, U, E_mu) # (bz, 1, size)
+            UoverWI = U / WeissInv
+            if self.f_filling is not None:
+                E_mu = self.bisection(self.fix_filling, E_mu, T, iomega, UoverWI)
+            nf = self.calc_nf(E_mu, T, iomega, UoverWI).unsqueeze(1) # (bz, 1, size)
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
             if prinfo: print('<nf>={}'.format(torch.mean(nf).item()))
             '''4. compute new self-energy'''
