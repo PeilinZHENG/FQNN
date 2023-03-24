@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from FK_Data import Ham
 from utils import mymkdir
+import time
 
 torch.manual_seed(0)
 
@@ -54,6 +55,22 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
         return data, index
 
 if __name__ == "__main__":
+    a = torch.rand(50, device='cuda') * 2 - 1
+    good_idx = torch.nonzero(a > 0, as_tuple=True)[0]
+    t = time.time()
+    bad_idx = torch.tensor([i for i in range(len(a)) if i not in good_idx], dtype=good_idx.dtype,
+                           device=good_idx.device)
+    t0 = time.time()
+    print(t0 - t)
+    bad_idx = torch.nonzero(a < 0, as_tuple=True)[0]
+    t1 = time.time()
+    print(t1 - t0)
+
+
+
+    exit(0)
+
+
     data = np.load('results/result.npz')
     L = 12
     SE = torch.from_numpy(data['SE'])
