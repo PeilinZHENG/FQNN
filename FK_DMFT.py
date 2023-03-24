@@ -81,10 +81,10 @@ class DMFT:
         while True:
             c = (a + b) / 2
             fc = fun(c, T, iomega, args)
-            good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a) / 2 < self.tol_bi), as_tuple=True)[0]
+            good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a).abs() / 2 < self.tol_bi), as_tuple=True)[0]
             if len(good_idx) > 0: best[good_idx] = c[good_idx]
             if len(good_idx) < len(c):
-                bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a) / 2 >= self.tol_bi), as_tuple=True)[0]
+                bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a).abs() / 2 >= self.tol_bi), as_tuple=True)[0]
                 a, b, c, fc, idx = a[bad_idx], b[bad_idx], c[bad_idx], fc[bad_idx], idx[bad_idx]
                 index = torch.nonzero(fc.sign() * fun(a, T, iomega, args).sign() < 0, as_tuple=True)
                 b[index] = c[index]
