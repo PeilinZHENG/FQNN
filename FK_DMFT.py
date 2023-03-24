@@ -22,10 +22,10 @@ class DMFT:
 
     def calc_nd(self, mu, T, iomega, H):
         if model is None:
-            Gloc = torch.diagonal((H + torch.diag_embed(mu.unsqueeze(-1).tile(1, 1, H0.shape[-1]))).inverse(), dim1=-2,
-                                  dim2=-1)  # (bz, self.count, size), here H0 is H_omega - SE
+            Gloc = torch.diagonal((H + torch.diag_embed(mu.tile(1, 1, H0.shape[-1]))).inverse(), dim1=-2,
+                                  dim2=-1)  # (bz, self.count, size)
         else:
-            Gloc = model(H - torch.diag_embed(mu.unsqueeze(-1).tile(1, 1, H0.shape[-1])), selfcons=True)  # (bz, self.count, size)
+            Gloc = model(H - torch.diag_embed(mu.tile(1, 1, H0.shape[-1])), selfcons=True)  # (bz, self.count, size)
         return (T * torch.sum(Gloc * torch.exp(-iomega * self.iota), dim=1)).real  # (bz, size)
 
     def calc_nf(self, E_mu, T, iomega, UoverWI):
@@ -101,7 +101,7 @@ class DMFT:
         else:
             E_mu = E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
         if self.d_filling is not None:
-            mu = torch.zeros((bz, 1), device=device, dtype=dtype)  # (bz, 1)
+            mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
         T = T.unsqueeze(-1).to(device=device, dtype=dtype) # (bz, 1)
         iomega = torch.matmul(T, self.iomega0).unsqueeze(-1) # (bz, self.count, 1)
         H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, self.count, size, size)
