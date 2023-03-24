@@ -27,9 +27,7 @@ class DMFT:
             return model(H - torch.diag_embed(mu.tile(1, 1, H.shape[-1])), selfcons=True)  # (bz, self.count, size)
 
     def calc_nd(self, Gloc, T, iomega): # args = (H0 + SE, model)
-        nd = T * torch.sum(Gloc * torch.exp(-iomega * self.iota), dim=1)
-        print(nd)
-        return nd.real  # (bz, size)
+        return (T * torch.sum(Gloc * torch.exp(-iomega * self.iota), dim=1)).real  # (bz, size)
 
     def calc_nf(self, E_mu, T, iomega, UoverWI):
         z = torch.sum(torch.log(1 - UoverWI) * torch.exp(iomega * self.iota), dim=1) - E_mu / T # (bz, size)
@@ -50,7 +48,7 @@ class DMFT:
         fa = fun(a, T, iomega, args)
         b = a + mingap
         fb = fun(b, T, iomega, args)
-        for i in torch.nonzero(fa * fb > 0, as_tuple=True)[0]:
+        for i in torch.nonzero(fa.sign() * fb.sign() > 0, as_tuple=True)[0]:
             if fa[i] > 0:
                 if fa[i] < fb[i]:
                     while fa[i] > 0:
@@ -74,21 +72,21 @@ class DMFT:
                         a[i] = a[i] - mingap
                         fa[i] = fun(a[i:i+1], T[i:i+1], iomega[i:i+1], args[i:i+1])
         best = torch.zeros_like(a, dtype=a.dtype, device=a.device)
-        idxa = torch.nonzero(torch.abs(fa) < self.tol_bi, as_tuple=True)[0]
-        if len(idxa) > 0: best[idxa] = a[idxa]
-        idxb = torch.nonzero(torch.abs(fb) < self.tol_bi, as_tuple=True)[0]
-        if len(idxb) > 0: best[idxb] = b[idxb]
-        idx = torch.tensor([i for i in range(len(a)) if i not in torch.cat((idxa, idxb))], dtype=idxa.dtype, device=idxa.device)
+        idx = torch.nonzero(fa.abs() < self.tol_bi, as_tuple=True)[0]
+        if len(idx) > 0: best[idx] = a[idx]
+        idx = torch.nonzero(fb.abs() < self.tol_bi, as_tuple=True)[0]
+        if len(idx) > 0: best[idx] = b[idx]
+        idx = torch.nonzero((fa.abs() >= self.tol_bi) & (fb.abs() >= self.tol_bi), as_tuple=True)[0]
         a, b = a[idx], b[idx]
         while True:
             c = (a + b) / 2
             fc = fun(c, T, iomega, args)
-            good_idx = torch.nonzero((fc.abs() < self.tol_bi) + (((b - a) / 2).abs() < self.tol_bi), as_tuple=True)[0]
+            good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a) / 2 < self.tol_bi), as_tuple=True)[0]
             if len(good_idx) > 0: best[good_idx] = c[good_idx]
             if len(good_idx) < len(c):
-                bad_idx = torch.tensor([i for i in range(len(c)) if i not in good_idx], dtype=idx.dtype, device=idx.device)
+                bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a) / 2 >= self.tol_bi), as_tuple=True)[0]
                 a, b, c, fc, idx = a[bad_idx], b[bad_idx], c[bad_idx], fc[bad_idx], idx[bad_idx]
-                index = torch.nonzero(fc * fun(a, T, iomega, args) < 0, as_tuple=True)
+                index = torch.nonzero(fc.sign() * fun(a, T, iomega, args).sign() < 0, as_tuple=True)
                 b[index] = c[index]
                 c[index] = a[index]
                 a = c
@@ -235,10 +233,11 @@ if __name__ == "__main__":
     momentum = 0.5
     maxEpoch = 500
     milestone = 30
-    filling = 0.5
+    f_filling = 0.5
+    d_filling = None
     tol_sc = 1e-6
     tol_bi = 1e-6
-    scf = DMFT(count, iota, momentum, maxEpoch, milestone, filling, tol_sc, tol_bi, device)
+    scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, device)
 
     '''2D test'''
     T = torch.tensor([0.01, 0.01], device=device)
