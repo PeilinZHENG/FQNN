@@ -45,6 +45,7 @@ class DMFT:
         return (n - self.f_filling) if f_ele else (n - self.d_filling)  # (bz,)
 
     def bisection(self, fun, a, T, iomega, args, mingap=5.):
+        sbz = a.size(0) ** 0.5
         fa = fun(a, T, iomega, args)
         b = a + mingap
         fb = fun(b, T, iomega, args)
@@ -77,15 +78,18 @@ class DMFT:
         idx = torch.nonzero(fb.abs() < self.tol_bi, as_tuple=True)[0]
         if len(idx) > 0: best[idx] = b[idx]
         idx = torch.nonzero((fa.abs() >= self.tol_bi) & (fb.abs() >= self.tol_bi), as_tuple=True)[0]
-        a, b = a[idx], b[idx]
+        a, b, T, iomega, args = a[idx], b[idx], T[idx], iomega[idx], args[idx]
         while True:
             c = (a + b) / 2
             fc = fun(c, T, iomega, args)
-            good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a).abs() / 2 < self.tol_bi), as_tuple=True)[0]
-            if len(good_idx) > 0: best[good_idx] = c[good_idx]
+            good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a).abs().view(-1) / 2 < self.tol_bi / sbz),
+                                     as_tuple=True)[0]
+            if len(good_idx) > 0: best[idx[good_idx]] = c[good_idx]
             if len(good_idx) < len(c):
-                bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a).abs() / 2 >= self.tol_bi), as_tuple=True)[0]
+                bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a).abs().view(-1) / 2 >= self.tol_bi / sbz),
+                                        as_tuple=True)[0]
                 a, b, c, fc, idx = a[bad_idx], b[bad_idx], c[bad_idx], fc[bad_idx], idx[bad_idx]
+                T, iomega, args = T[bad_idx], iomega[bad_idx], args[bad_idx]
                 index = torch.nonzero(fc.sign() * fun(a, T, iomega, args).sign() < 0, as_tuple=True)
                 b[index] = c[index]
                 c[index] = a[index]
@@ -93,6 +97,51 @@ class DMFT:
             else:
                 break
         return best
+
+    def bisection_(self, fun, a, T, iomega, args, mingap=5.):
+        fa = fun(a, T, iomega, args)
+        b = a + mingap
+        fb = fun(b, T, iomega, args)
+        for i in torch.nonzero(fa * fb > 0, as_tuple=True)[0]:
+            if fa[i] > 0:
+                if fa[i] < fb[i]:
+                    while fa[i] > 0:
+                        b[i], fb[i] = a[i], fa[i]
+                        a[i] = a[i] - mingap
+                        fa[i] = fun(a[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+                else:
+                    while fb[i] > 0:
+                        a[i], fa[i] = b[i], fb[i]
+                        b[i] = b[i] + mingap
+                        fb[i] = fun(b[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+            else:
+                if fa[i] < fb[i]:
+                    while fb[i] < 0:
+                        a[i], fa[i] = b[i], fb[i]
+                        b[i] = b[i] + mingap
+                        fb[i] = fun(b[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+                else:
+                    while fa[i] < 0:
+                        b[i], fb[i] = a[i], fa[i]
+                        a[i] = a[i] - mingap
+                        fa[i] = fun(a[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+        index = torch.nonzero(torch.abs(fa) < self.tol_bi, as_tuple=True)
+        if len(index[0]) > 0: b[index] = a[index]
+        index = torch.nonzero(torch.abs(fb) < self.tol_bi, as_tuple=True)
+        if len(index[0]) > 0: a[index] = b[index]
+        while True:
+            c = (a + b) / 2
+            fc = fun(c, T, iomega, args)
+            index = torch.nonzero(torch.abs(fc) < self.tol_bi, as_tuple=True)
+            if len(index[0]) > 0:
+                a[index] = c[index]
+                b[index] = c[index]
+            if torch.linalg.norm((b - a) / 2) < self.tol_bi:
+                return (b + a) / 2  # (bz, 1)
+            index = torch.nonzero(fc * fun(a, T, iomega, args) < 0, as_tuple=True)
+            b[index] = c[index]
+            c[index] = a[index]
+            a = c
 
     def calc_OP(self, fun, nf, prinfo=False):
         op = fun(nf.squeeze(1))
@@ -136,6 +185,7 @@ class DMFT:
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
             UoverWI = U / WeissInv
+            # print(U.shape, WeissInv.shape, UoverWI.shape)
             if self.f_filling is not None:
                 E_mu = self.bisection(self.fix_filling, E_mu, T, iomega, UoverWI)
             nf = self.calc_nf(E_mu, T, iomega, UoverWI).unsqueeze(1) # (bz, 1, size)
@@ -176,9 +226,9 @@ class DMFT:
                             if self.d_filling is not None: best_mu[idx[better_idx]] = mu[better_idx]
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
                         idx = idx[bad_idx]
-                    H0, SE, iomega, U, E_mu = H0[bad_idx], SE[bad_idx], iomega[bad_idx], U[bad_idx], E_mu[bad_idx]
-                    T, min_errors, WeissInv, Gimp = T[bad_idx], min_errors[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
-                    if self.d_filling is not None: mu = mu[bad_idx]
+                    H0, SE, iomega = H0[bad_idx], SE[bad_idx], iomega[bad_idx]
+                    T, U, mu, E_mu = T[bad_idx], U[bad_idx], mu[bad_idx], E_mu[bad_idx]
+                    min_errors, WeissInv, Gimp = min_errors[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
                     if model is not None: model.z = iomega
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
@@ -240,13 +290,13 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, device)
 
     '''2D test'''
-    T = torch.tensor([0.01, 0.01], device=device)
-    U = torch.tensor([1., 1.], device=device)
-    tp = torch.tensor([0.1, 1.4], device=device)
-    mu = U / 2
-    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1).to(device)
+    T = torch.tensor([0.1, 0.1], device=device)
+    U = torch.tensor([1., 4.], device=device)
+    # tp = torch.tensor([0.1, 1.4], device=device)
+    mu = torch.zeros(len(U))
+    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
     t = time.time()
-    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(opf,), prinfo=True)  # (bz, 1, size)
+    SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     exit(0)
 
