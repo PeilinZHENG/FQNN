@@ -167,7 +167,7 @@ class DMFT:
             UoverWI = U / WeissInv
             # print(U.shape, WeissInv.shape, UoverWI.shape)
             if self.f_filling is not None:
-                E_mu = self.bisection_(self.fix_filling, E_mu, T, iomega, UoverWI)
+                E_mu = self.bisection(self.fix_filling, E_mu, T, iomega, UoverWI)
             nf = self.calc_nf(E_mu, T, iomega, UoverWI).unsqueeze(1) # (bz, 1, size)
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
             if prinfo: print('{} loop <nf>: {:.3f}'.format(l, torch.mean(nf).item()))
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     L = 12  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_2d_0'
-    T = 0.10
+    T = 0.11
     save = True
     show = True
 
