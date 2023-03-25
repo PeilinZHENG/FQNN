@@ -27,8 +27,8 @@ class DMFT:
         else:
             return model(H - torch.diag_embed(mu.tile(1, 1, H.shape[-1])), selfcons=True)  # (bz, self.count, size)
 
-    def calc_nd(self, Gloc, T, iomega): # args = (H0 + SE, model)
-        return (T * torch.sum(Gloc * torch.exp(iomega * self.iota), dim=1))  # (bz, size)
+    def calc_nd(self, Gloc, T, iomega):
+        return (T * torch.sum(Gloc * torch.exp(iomega * self.iota), dim=1)).real  # (bz, size)
 
     def calc_nf(self, E_mu, T, iomega, UoverWI):
         z = torch.sum(torch.log(1 - UoverWI) * torch.exp(iomega * self.iota), dim=1) - E_mu / T # (bz, size)
@@ -259,25 +259,25 @@ if __name__ == "__main__":
     show = True
 
     '''construct DMFT'''
-    count = 1024
+    count = 20
     iota = 1e-3
     momentum = 0.5
     maxEpoch = 5000
     milestone = 30
     f_filling = 0.5
-    d_filling = None
+    d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-6
     mingap = 5.
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
-    U = torch.tensor([4.])
+    tp = torch.tensor([0.1, 1.4])
+    U = torch.ones(len(tp))
     T = T * torch.ones(len(U))
-    # tp = torch.tensor([0.1, 1.4])
     mu = torch.zeros(len(U))
-    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
-    print((1 / (torch.exp(torch.linalg.eigvalsh(H0).squeeze(1) / T) + 1)).mean(dim=1))
+    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    print((1 / (torch.exp(torch.linalg.eigvalsh(H0).squeeze(1) / T.unsqueeze(-1)) + 1)).mean(dim=1))
     t = time.time()
     SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
