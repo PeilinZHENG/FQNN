@@ -253,7 +253,7 @@ if __name__ == "__main__":
     L = 14  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_2d_0'
-    T = 0.12
+    T = 0.15
     save = True
     show = True
 
