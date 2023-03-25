@@ -276,7 +276,7 @@ if __name__ == "__main__":
     U = torch.tensor([1., 4.])
     T = 0.1 * torch.ones(len(U))
     # tp = torch.tensor([0.1, 1.4])
-    mu = U / 2
+    mu = torch.zeros(len(U))
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
     t = time.time()
     SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
