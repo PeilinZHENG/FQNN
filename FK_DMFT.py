@@ -250,10 +250,10 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
-    L = 12  # size = L ** 2
+    L = 14  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_2d_0'
-    T = 0.12
+    T = 0.1
     save = True
     show = True
 
@@ -271,15 +271,15 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
-    U = torch.linspace(1., 4., 60)  # torch.tensor([1., 4.])
-    T = 0.1 * torch.ones(len(U))
-    # tp = torch.tensor([0.1, 1.4])
-    mu = U / 2
-    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
-    t = time.time()
-    SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
-    print(time.time() - t)
-    exit(0)
+    # U = torch.linspace(1., 4., 60)  # torch.tensor([1., 4.])
+    # T = 0.1 * torch.ones(len(U))
+    # # tp = torch.tensor([0.1, 1.4])
+    # mu = U / 2
+    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
+    # t = time.time()
+    # SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
+    # print(time.time() - t)
+    # exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir
