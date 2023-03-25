@@ -167,7 +167,7 @@ class DMFT:
             UoverWI = U / WeissInv
             # print(U.shape, WeissInv.shape, UoverWI.shape)
             if self.f_filling is not None:
-                E_mu = self.bisection(self.fix_filling, E_mu, T, iomega, UoverWI)
+                E_mu = self.bisection_(self.fix_filling, E_mu, T, iomega, UoverWI)
             nf = self.calc_nf(E_mu, T, iomega, UoverWI).unsqueeze(1) # (bz, 1, size)
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
             if prinfo: print('{} loop <nf>: {:.3f}'.format(l, torch.mean(nf).item()))
@@ -252,8 +252,8 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = 'FK_{}'.format(L)
-    Net = 'Naive_0'
-    T = 0.15
+    Net = 'Naive_2d_0'
+    T = 0.10
     save = True
     show = True
 
@@ -261,7 +261,7 @@ if __name__ == "__main__":
     count = 20
     iota = 0.
     momentum = 0.5
-    maxEpoch = 500
+    maxEpoch = 5000
     milestone = 30
     f_filling = 0.5
     d_filling = None
@@ -271,15 +271,15 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
-    U = torch.tensor([1., 4.])
-    T = 0.1 * torch.ones(len(U))
-    # tp = torch.tensor([0.1, 1.4])
-    mu = U / 2
-    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
-    t = time.time()
-    SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
-    print(time.time() - t)
-    exit(0)
+    # U = torch.tensor([1., 4.])
+    # T = 0.1 * torch.ones(len(U))
+    # # tp = torch.tensor([0.1, 1.4])
+    # mu = U / 2
+    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
+    # t = time.time()
+    # SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
+    # print(time.time() - t)
+    # exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir
