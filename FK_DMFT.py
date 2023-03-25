@@ -265,7 +265,7 @@ if __name__ == "__main__":
     f_filling = 0.5
     d_filling = None
     tol_sc = 1e-6
-    tol_bi = 1e-6
+    tol_bi = 1e-7
     mingap = 5.
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
