@@ -11,7 +11,7 @@ milestone=30
 f_filling=0.5
 d_filling=0.5
 tol_sc=1e-6
-tol_bi=1e-6
+tol_bi=1e-7
 mingap=5
 
 # Parameters of training
