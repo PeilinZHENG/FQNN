@@ -248,10 +248,10 @@ if __name__ == "__main__":
     os.environ['NUMEXPR_NUM_THREADS'] = str(threads)
     torch.set_num_threads(threads)
 
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     torch.manual_seed(0)
 
-    L = 14  # size = L ** 2
+    L = 12  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_2d_0'
     T = 0.005
@@ -260,7 +260,7 @@ if __name__ == "__main__":
 
     '''construct DMFT'''
     count = 1024
-    iota = 0.
+    iota = 1e-3
     momentum = 0.5
     maxEpoch = 5000
     milestone = 30
