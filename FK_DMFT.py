@@ -34,10 +34,6 @@ class DMFT:
         z = torch.sum((1 - UoverWI).log() * (iomega * self.iota).exp(), dim=1) - E_mu / T # (bz, size)
         return torch.nan_to_num(torch.sigmoid(z).real, nan=0.)  # (bz, size)
 
-    def calc_nf_(self, E_mu, T, iomega, UoverWI):
-        z = torch.prod((1 - UoverWI).pow((iomega * self.iota).exp()), dim=1).pow(-1) * (E_mu / T).exp() # (bz, size)
-        return torch.nan_to_num((1 + z).pow(-1).real, nan=0.)  # (bz, size)
-
     def fix_filling(self, a, T, iomega, args, model=None, f_ele=True):
         if f_ele:
             return self.calc_nf(a, T, iomega, args).mean(dim=-1) - self.f_filling   # (bz,)
