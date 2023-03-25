@@ -273,7 +273,7 @@ if __name__ == "__main__":
     U = torch.tensor([1., 4.])
     tp = torch.zeros(len(U))
     T = T * torch.ones(len(U))
-    mu = U / 2#torch.zeros(len(U))
+    mu = U / 2  # torch.zeros(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     print((1 / (torch.exp(torch.linalg.eigvalsh(H0).squeeze(1) / T.unsqueeze(-1)) + 1)).mean(dim=1))
     t = time.time()
