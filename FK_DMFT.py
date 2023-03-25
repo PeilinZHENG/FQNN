@@ -149,7 +149,7 @@ class DMFT:
         if SEinit is None:
             # SE = torch.zeros((bz, self.count, size), device=device).type(dtype)
             # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype)
-            SE = 0.1 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.)
+            SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.)
         else:
             SE = SEinit.to(device=device, dtype=dtype)
         min_error, min_errors = 1e10, None
