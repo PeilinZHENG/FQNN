@@ -180,7 +180,7 @@ class DMFT:
             if self.d_filling is not None:
                 mu = self.bisection(partial(self.fix_filling, model=model, f_ele=False), mu, T, iomega, H)
             Gloc = self.calc_Gloc(mu, iomega, H, model)
-            if prinfo: print('<nd>={:.3f}'.format(torch.mean(self.calc_nd(Gloc, T, iomega)).item()))
+            if prinfo: print('{} loop <nd>: {:.3f}'.format(l, torch.mean(self.calc_nd(Gloc, T, iomega)).item()))
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
@@ -190,7 +190,7 @@ class DMFT:
                 E_mu = self.bisection(self.fix_filling, E_mu, T, iomega, UoverWI)
             nf = self.calc_nf(E_mu, T, iomega, UoverWI).unsqueeze(1) # (bz, 1, size)
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
-            if prinfo: print('<nf>={:.3f}'.format(torch.mean(nf).item()))
+            if prinfo: print('{} loop <nf>: {:.3f}'.format(l, torch.mean(nf).item()))
             '''4. compute new self-energy'''
             new_errors = torch.linalg.norm(Gimp - Gloc, dim=(1, 2))
             tot_error = torch.linalg.norm(new_errors).item()
@@ -290,11 +290,11 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, device)
 
     '''2D test'''
-    U = torch.linspace(1., 4., 60)
+    U = torch.tensor([1., 4.])
     T = 0.1 * torch.ones(len(U))
-    # tp = torch.tensor([0.1, 1.4], device=device)
+    # tp = torch.tensor([0.1, 1.4])
     mu = U / 2
-    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1).to(device)
+    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
     t = time.time()
     SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
