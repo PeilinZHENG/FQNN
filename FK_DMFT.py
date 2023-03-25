@@ -111,17 +111,18 @@ class DMFT:
         if len(index[0]) > 0: a[index] = b[index]
         while True:
             c = (a + b) / 2
-            fc = fun(c, T, iomega, args)
-            index = torch.nonzero(fc.abs() < self.tol_bi, as_tuple=True)
-            if len(index[0]) > 0:
-                a[index] = c[index]
-                b[index] = c[index]
             if torch.linalg.norm((b - a) / 2) < self.tol_bi * sbz:
-                return (b + a) / 2  # (bz, 1)
-            index = torch.nonzero(fc * fun(a, T, iomega, args) < 0, as_tuple=True)
-            b[index] = c[index]
-            c[index] = a[index]
-            a = c
+                return c  # (bz, 1)
+            else:
+                fc = fun(c, T, iomega, args)
+                index = torch.nonzero(fc.abs() < self.tol_bi, as_tuple=True)
+                if len(index[0]) > 0:
+                    a[index] = c[index]
+                    b[index] = c[index]
+                index = torch.nonzero(fc * fun(a, T, iomega, args) < 0, as_tuple=True)
+                b[index] = c[index]
+                c[index] = a[index]
+                a = c
 
     def calc_OP(self, fun, nf, prinfo=False):
         op = fun(nf.squeeze(1))
@@ -146,8 +147,9 @@ class DMFT:
         if model is not None: model.z = iomega
         '''0. initialize self-energy'''
         if SEinit is None:
-            # SE = 0.1 * torch.randn((bz, self.count, size), device=device).type(dtype)
-            SE = 0.1 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.)
+            # SE = torch.zeros((bz, self.count, size), device=device).type(dtype)
+            # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype)
+            SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.)
         else:
             SE = SEinit.to(device=device, dtype=dtype)
         min_error, min_errors = 1e10, None
@@ -253,7 +255,7 @@ if __name__ == "__main__":
     L = 12  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_2d_0'
-    T = 0.11
+    T = 0.12
     save = True
     show = True
 
@@ -271,15 +273,15 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
-    # U = torch.tensor([1., 4.])
-    # T = 0.1 * torch.ones(len(U))
-    # # tp = torch.tensor([0.1, 1.4])
-    # mu = U / 2
-    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
-    # t = time.time()
-    # SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
-    # print(time.time() - t)
-    # exit(0)
+    U = torch.tensor([1., 4.])
+    T = 0.1 * torch.ones(len(U))
+    # tp = torch.tensor([0.1, 1.4])
+    mu = U / 2
+    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
+    t = time.time()
+    SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
+    print(time.time() - t)
+    exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir
