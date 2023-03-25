@@ -81,8 +81,7 @@ class DMFT:
             fc = fun(c, T, iomega, args)
             index = torch.nonzero(fc.abs() < self.tol_bi, as_tuple=True)
             if len(index[0]) > 0:
-                a[index] = c[index]
-                b[index] = c[index]
+                a[index], b[index] = c[index], c[index]
             if torch.linalg.norm((b - a) / 2) < self.tol_bi * sbz:
                 return c  # (bz, 1)
             index = torch.nonzero(fc * fun(a, T, iomega, args) < 0, as_tuple=True)
@@ -262,7 +261,7 @@ if __name__ == "__main__":
     d_filling = None
     tol_sc = 1e-6
     tol_bi = 1e-7
-    mingap = 1.
+    mingap = 5.
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
