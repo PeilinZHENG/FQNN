@@ -88,11 +88,8 @@ class DMFT:
             fc = fun(c, T, iomega, args)
             good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a).abs().view(-1) / 2 < self.tol_bi),
                                      as_tuple=True)[0]
-            if len(good_idx) == len(c):
-                best[idx[good_idx]] = c
-                break
-            else:
-                if len(good_idx) > 0: best[idx[good_idx]] = c[good_idx]
+            if len(good_idx) > 0: best[idx[good_idx]] = c[good_idx]
+            if len(good_idx) < len(c):
                 bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a).abs().view(-1) / 2 >= self.tol_bi),
                                         as_tuple=True)[0]
                 a, b, c, fc, idx = a[bad_idx], b[bad_idx], c[bad_idx], fc[bad_idx], idx[bad_idx]
@@ -101,6 +98,8 @@ class DMFT:
                 b[index] = c[index]
                 c[index] = a[index]
                 a = c
+            else:
+                break
         return best
 
     def bisection_(self, fun, a, T, iomega, args):
@@ -112,18 +111,17 @@ class DMFT:
         if len(index[0]) > 0: a[index] = b[index]
         while True:
             c = (a + b) / 2
+            fc = fun(c, T, iomega, args)
+            index = torch.nonzero(fc.abs() < self.tol_bi, as_tuple=True)
+            if len(index[0]) > 0:
+                a[index] = c[index]
+                b[index] = c[index]
             if torch.linalg.norm((b - a) / 2) < self.tol_bi * sbz:
                 return c  # (bz, 1)
-            else:
-                fc = fun(c, T, iomega, args)
-                index = torch.nonzero(fc.abs() < self.tol_bi, as_tuple=True)
-                if len(index[0]) > 0:
-                    a[index] = c[index]
-                    b[index] = c[index]
-                index = torch.nonzero(fc.sign() * fun(a, T, iomega, args).sign() < 0, as_tuple=True)
-                b[index] = c[index]
-                c[index] = a[index]
-                a = c
+            index = torch.nonzero(fc * fun(a, T, iomega, args) < 0, as_tuple=True)
+            b[index] = c[index]
+            c[index] = a[index]
+            a = c
 
     def calc_OP(self, fun, nf, prinfo=False):
         op = fun(nf.squeeze(1))
@@ -168,9 +166,8 @@ class DMFT:
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
             UoverWI = U / WeissInv
-            # print(U.shape, WeissInv.shape, UoverWI.shape)
             if self.f_filling is not None:
-                E_mu = self.bisection(self.fix_filling, E_mu, T, iomega, UoverWI)
+                E_mu = self.bisection_(self.fix_filling, E_mu, T, iomega, UoverWI)
             nf = self.calc_nf(E_mu, T, iomega, UoverWI).unsqueeze(1) # (bz, 1, size)
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
             if prinfo: print('{} loop <nf>: {:.3f}'.format(l, torch.mean(nf).item()))
@@ -274,7 +271,7 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
-    U = torch.tensor([1., 4.])
+    U = torch.linspace(1., 4., 60)  # torch.tensor([1., 4.])
     T = 0.1 * torch.ones(len(U))
     # tp = torch.tensor([0.1, 1.4])
     mu = U / 2
