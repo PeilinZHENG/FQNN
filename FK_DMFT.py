@@ -88,8 +88,11 @@ class DMFT:
             fc = fun(c, T, iomega, args)
             good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a).abs().view(-1) / 2 < self.tol_bi),
                                      as_tuple=True)[0]
-            if len(good_idx) > 0: best[idx[good_idx]] = c[good_idx]
-            if len(good_idx) < len(c):
+            if len(good_idx) == len(c):
+                best[idx[good_idx]] = c
+                break
+            else:
+                if len(good_idx) > 0: best[idx[good_idx]] = c[good_idx]
                 bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a).abs().view(-1) / 2 >= self.tol_bi),
                                         as_tuple=True)[0]
                 a, b, c, fc, idx = a[bad_idx], b[bad_idx], c[bad_idx], fc[bad_idx], idx[bad_idx]
@@ -98,8 +101,6 @@ class DMFT:
                 b[index] = c[index]
                 c[index] = a[index]
                 a = c
-            else:
-                break
         return best
 
     def bisection_(self, fun, a, T, iomega, args):
@@ -119,7 +120,7 @@ class DMFT:
                 if len(index[0]) > 0:
                     a[index] = c[index]
                     b[index] = c[index]
-                index = torch.nonzero(fc * fun(a, T, iomega, args) < 0, as_tuple=True)
+                index = torch.nonzero(fc.sign() * fun(a, T, iomega, args).sign() < 0, as_tuple=True)
                 b[index] = c[index]
                 c[index] = a[index]
                 a = c
