@@ -161,7 +161,6 @@ class DMFT:
                 mu = self.bisection(partial(self.fix_filling, model=model, f_ele=False), mu, T, iomega, H)
             Gloc = self.calc_Gloc(mu, iomega, H, model)
             if prinfo: print('{} loop <nd>: {:.8f}'.format(l, torch.mean(self.calc_nd(Gloc, T, iomega)).item()))
-            exit(0)
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
