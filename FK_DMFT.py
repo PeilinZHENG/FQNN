@@ -40,10 +40,9 @@ class DMFT:
 
     def fix_filling(self, a, T, iomega, args, model=None, f_ele=True):
         if f_ele:
-            n = torch.mean(self.calc_nf(a, T, iomega, args), dim=-1)
+            return self.calc_nf(a, T, iomega, args).mean(dim=-1) - self.f_filling   # (bz,)
         else:
-            n = torch.mean(self.calc_nd(self.calc_Gloc(a, iomega, args, model), T, iomega), dim=-1)
-        return (n - self.f_filling) if f_ele else (n - self.d_filling)  # (bz,)
+            return self.calc_nd(self.calc_Gloc(a, iomega, args, model), T, iomega).mean(dim=-1) - self.d_filling # (bz,)
 
     def detr_intvl(self, fun, a, T, iomega, args):
         fa = fun(a, T, iomega, args)
