@@ -28,14 +28,14 @@ class DMFT:
             return model(H - torch.diag_embed(mu.tile(1, 1, H.shape[-1])), selfcons=True)  # (bz, self.count, size)
 
     def calc_nd(self, Gloc, T, iomega):
-        return (T * torch.sum(Gloc * torch.exp(iomega * self.iota), dim=1)).real  # (bz, size)
+        return (T * torch.sum(Gloc * (iomega * self.iota).exp(), dim=1)).real  # (bz, size)
 
     def calc_nf(self, E_mu, T, iomega, UoverWI):
-        z = torch.sum(torch.log(1 - UoverWI) * torch.exp(iomega * self.iota), dim=1) - E_mu / T # (bz, size)
+        z = torch.sum((1 - UoverWI).log() * (iomega * self.iota).exp(), dim=1) - E_mu / T # (bz, size)
         return torch.nan_to_num(torch.sigmoid(z).real, nan=0.)  # (bz, size)
 
     def calc_nf_(self, E_mu, T, iomega, UoverWI):
-        z = torch.prod((1 - UoverWI).pow(torch.exp(iomega * self.iota)), dim=1).pow(-1) * torch.exp(E_mu / T) # (bz, size)
+        z = torch.prod((1 - UoverWI).pow((iomega * self.iota).exp()), dim=1).pow(-1) * (E_mu / T).exp() # (bz, size)
         return torch.nan_to_num((1 + z).pow(-1).real, nan=0.)  # (bz, size)
 
     def fix_filling(self, a, T, iomega, args, model=None, f_ele=True):
@@ -252,32 +252,32 @@ if __name__ == "__main__":
     L = 12  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_2d_0'
-    T = 0.005
+    T = 0.1
     save = True
     show = True
 
     '''construct DMFT'''
     count = 20
-    iota = 0.1
+    iota = 0.
     momentum = 0.5
     maxEpoch = 5000
     milestone = 30
     f_filling = 0.5
-    d_filling = 0.5
+    d_filling = None
     tol_sc = 1e-6
     tol_bi = 1e-6
     mingap = 5.
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
-    tp = torch.tensor([0.1, 1.4])
-    U = torch.ones(len(tp))
+    U = torch.tensor([1., 4.])
+    tp = torch.zeros(len(U))
     T = T * torch.ones(len(U))
-    mu = torch.zeros(len(U))
+    mu = U / 2#torch.zeros(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     print((1 / (torch.exp(torch.linalg.eigvalsh(H0).squeeze(1) / T.unsqueeze(-1)) + 1)).mean(dim=1))
     t = time.time()
-    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(opf,), prinfo=True)  # (bz, 1, size)
+    SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     exit(0)
 
