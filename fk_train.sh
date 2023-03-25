@@ -8,9 +8,11 @@ iota=0
 momentum=0.5
 maxEpoch=200
 milestone=30
-filling=0.5
+f_filling=0.5
+d_filling=0.5
 tol_sc=1e-6
 tol_bi=1e-6
+mingap=5
 
 # Parameters of training
 L=14
@@ -63,11 +65,11 @@ conda activate pytorch
 
 
 python FK_Train.py \
-  -t $threads -j $workers -b $batchsize -p $print_freq -s $save_freq --epochs $epochs --gpu $gpu --count $count \
-  --iota $iota --momentum $momentum --maxEpoch $maxEpoch --milestone $milestone --filling $filling --tol_sc $tol_sc \
-  --tol_bi $tol_bi --opt $opt --loss $loss --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss \
-  --data $data --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm --seed $seed \
+  -t $threads -j $workers -b $batchsize -p $print_freq -s $save_freq --epochs $epochs --gpu $gpu --seed $seed \
+  --count $count --iota $iota --momentum $momentum --f_filling $f_filling --d_filling $d_filling \
+  --maxEpoch $maxEpoch --milestone $milestone --tol_sc $tol_sc --tol_bi $tol_bi --mingap $mingap --disor $disor \
+  --loss $loss --opt $opt --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss --drop $drop \
+  --data $data --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \
-  --drop $drop --disor $disor --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale \
-  --SC2D
+  --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale --SC2D
 
