@@ -248,7 +248,7 @@ if __name__ == "__main__":
     os.environ['NUMEXPR_NUM_THREADS'] = str(threads)
     torch.set_num_threads(threads)
 
-    device = torch.device("cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(0)
 
     L = 12  # size = L ** 2
@@ -260,7 +260,7 @@ if __name__ == "__main__":
 
     '''construct DMFT'''
     count = 20
-    iota = 1e-3
+    iota = 0.1
     momentum = 0.5
     maxEpoch = 5000
     milestone = 30
@@ -279,7 +279,7 @@ if __name__ == "__main__":
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     print((1 / (torch.exp(torch.linalg.eigvalsh(H0).squeeze(1) / T.unsqueeze(-1)) + 1)).mean(dim=1))
     t = time.time()
-    SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
+    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(opf,), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     exit(0)
 
