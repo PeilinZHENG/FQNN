@@ -23,12 +23,12 @@ class DMFT:
 
     def calc_Gloc(self, mu, iomega, H, model=None):
         if model is None:
-            return torch.linalg.diagonal((torch.diag_embed(iomega.tile(1, 1, H.shape[-1]) + mu) - H).inverse())  # (bz, self.count, size)
+            return torch.linalg.diagonal((torch.diag_embed((iomega + mu).tile(1, 1, H.shape[-1])) - H).inverse())  # (bz, self.count, size)
         else:
             return model(H - torch.diag_embed(mu.tile(1, 1, H.shape[-1])), selfcons=True)  # (bz, self.count, size)
 
     def calc_nd(self, Gloc, T, iomega): # args = (H0 + SE, model)
-        return (T * torch.sum(Gloc * torch.exp(iomega * self.iota), dim=1)).real  # (bz, size)
+        return (T * torch.sum(Gloc * torch.exp(iomega * self.iota), dim=1))  # (bz, size)
 
     def calc_nf(self, E_mu, T, iomega, UoverWI):
         z = torch.sum(torch.log(1 - UoverWI) * torch.exp(iomega * self.iota), dim=1) - E_mu / T # (bz, size)
@@ -161,7 +161,8 @@ class DMFT:
             if self.d_filling is not None:
                 mu = self.bisection(partial(self.fix_filling, model=model, f_ele=False), mu, T, iomega, H)
             Gloc = self.calc_Gloc(mu, iomega, H, model)
-            if prinfo: print('{} loop <nd>: {:.3f}'.format(l, torch.mean(self.calc_nd(Gloc, T, iomega)).item()))
+            if prinfo: print('{} loop <nd>: {:.8f}'.format(l, torch.mean(self.calc_nd(Gloc, T, iomega)).item()))
+            exit(0)
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
@@ -253,12 +254,12 @@ if __name__ == "__main__":
     L = 14  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_2d_0'
-    T = 0.15
+    T = 0.005
     save = True
     show = True
 
     '''construct DMFT'''
-    count = 20
+    count = 1024
     iota = 0.
     momentum = 0.5
     maxEpoch = 5000
@@ -271,15 +272,16 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
-    # U = torch.linspace(1., 4., 60)  # torch.tensor([1., 4.])
-    # T = 0.1 * torch.ones(len(U))
-    # # tp = torch.tensor([0.1, 1.4])
-    # mu = U / 2
-    # H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
-    # t = time.time()
-    # SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
-    # print(time.time() - t)
-    # exit(0)
+    U = torch.tensor([4.])
+    T = T * torch.ones(len(U))
+    # tp = torch.tensor([0.1, 1.4])
+    mu = torch.zeros(len(U))
+    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
+    print((1 / (torch.exp(torch.linalg.eigvalsh(H0).squeeze(1) / T) + 1)).mean(dim=1))
+    t = time.time()
+    SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
+    print(time.time() - t)
+    exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir
