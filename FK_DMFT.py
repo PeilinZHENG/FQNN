@@ -28,7 +28,7 @@ class DMFT:
             return model(H - torch.diag_embed(mu.tile(1, 1, H.shape[-1])), selfcons=True)  # (bz, self.count, size)
 
     def calc_nd(self, Gloc, T, iomega): # args = (H0 + SE, model)
-        return (T * torch.sum(Gloc * torch.exp(-iomega * self.iota), dim=1)).real  # (bz, size)
+        return (T * torch.sum(Gloc * torch.exp(iomega * self.iota), dim=1)).real  # (bz, size)
 
     def calc_nf(self, E_mu, T, iomega, UoverWI):
         z = torch.sum(torch.log(1 - UoverWI) * torch.exp(iomega * self.iota), dim=1) - E_mu / T # (bz, size)
@@ -149,7 +149,7 @@ class DMFT:
         if SEinit is None:
             # SE = torch.zeros((bz, self.count, size), device=device).type(dtype)
             # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype)
-            SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.)
+            SE = 0.1 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.)
         else:
             SE = SEinit.to(device=device, dtype=dtype)
         min_error, min_errors = 1e10, None
@@ -276,7 +276,7 @@ if __name__ == "__main__":
     U = torch.tensor([1., 4.])
     T = 0.1 * torch.ones(len(U))
     # tp = torch.tensor([0.1, 1.4])
-    mu = torch.zeros(len(U))
+    mu = U / 2
     H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
     t = time.time()
     SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
