@@ -6,7 +6,7 @@ from functools import partial
 class DMFT:
     def __init__(self, count: int = 100, iota: float = 0., momentum: float = 0., maxEpoch: int = 100,
                  milestone: Union[int, None] = None, f_filling: Union[float, None] = None,
-                 d_filling: Union[float, None] = None, tol_sc: float = 1e-8, tol_bi: float = 1e-6,
+                 d_filling: Union[float, None] = None, tol_sc: float = 1e-8, tol_bi: float = 1e-6, mingap : float = 5.,
                  device: torch.device = torch.device('cpu'), double: bool = True):
         self.count = count * 2
         self.iota = iota
@@ -17,6 +17,7 @@ class DMFT:
         self.d_filling = d_filling
         self.tol_sc = tol_sc
         self.tol_bi = tol_bi
+        self.mingap = mingap
         self.iomega0 = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(0) + 1) * torch.pi  # (1, self.count)
         if double: self.iomega0 = self.iomega0.type(torch.complex128)
 
@@ -44,33 +45,37 @@ class DMFT:
             n = torch.mean(self.calc_nd(self.calc_Gloc(a, iomega, args, model), T, iomega), dim=-1)
         return (n - self.f_filling) if f_ele else (n - self.d_filling)  # (bz,)
 
-    def bisection(self, fun, a, T, iomega, args, mingap=5.):
+    def detr_intvl(self, fun, a, T, iomega, args):
         fa = fun(a, T, iomega, args)
-        b = a + mingap
+        b = a + self.mingap
         fb = fun(b, T, iomega, args)
         for i in torch.nonzero(fa.sign() * fb.sign() > 0, as_tuple=True)[0]:
             if fa[i] > 0:
                 if fa[i] < fb[i]:
                     while fa[i] > 0:
                         b[i], fb[i] = a[i], fa[i]
-                        a[i] = a[i] - mingap
-                        fa[i] = fun(a[i:i+1], T[i:i+1], iomega[i:i+1], args[i:i+1])
+                        a[i] = a[i] - self.mingap
+                        fa[i] = fun(a[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
                 else:
                     while fb[i] > 0:
                         a[i], fa[i] = b[i], fb[i]
-                        b[i] = b[i] + mingap
-                        fb[i] = fun(b[i:i+1], T[i:i+1], iomega[i:i+1], args[i:i+1])
+                        b[i] = b[i] + self.mingap
+                        fb[i] = fun(b[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
             else:
                 if fa[i] < fb[i]:
                     while fb[i] < 0:
                         a[i], fa[i] = b[i], fb[i]
-                        b[i] = b[i] + mingap
-                        fb[i] = fun(b[i:i+1], T[i:i+1], iomega[i:i+1], args[i:i+1])
+                        b[i] = b[i] + self.mingap
+                        fb[i] = fun(b[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
                 else:
                     while fa[i] < 0:
                         b[i], fb[i] = a[i], fa[i]
-                        a[i] = a[i] - mingap
-                        fa[i] = fun(a[i:i+1], T[i:i+1], iomega[i:i+1], args[i:i+1])
+                        a[i] = a[i] - self.mingap
+                        fa[i] = fun(a[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+        return a, b, fa, fb
+
+    def bisection(self, fun, a, T, iomega, args):
+        a, b, fa, fb = self.detr_intvl(fun, a, T, iomega, args)
         best = torch.zeros_like(a, dtype=a.dtype, device=a.device)
         idx = torch.nonzero(fa.abs() < self.tol_bi, as_tuple=True)[0]
         if len(idx) > 0: best[idx] = a[idx]
@@ -97,34 +102,9 @@ class DMFT:
                 break
         return best
 
-    def bisection_(self, fun, a, T, iomega, args, mingap=5.):
+    def bisection_(self, fun, a, T, iomega, args):
         sbz = a.size(0) ** 0.5
-        fa = fun(a, T, iomega, args)
-        b = a + mingap
-        fb = fun(b, T, iomega, args)
-        for i in torch.nonzero(fa * fb > 0, as_tuple=True)[0]:
-            if fa[i] > 0:
-                if fa[i] < fb[i]:
-                    while fa[i] > 0:
-                        b[i], fb[i] = a[i], fa[i]
-                        a[i] = a[i] - mingap
-                        fa[i] = fun(a[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
-                else:
-                    while fb[i] > 0:
-                        a[i], fa[i] = b[i], fb[i]
-                        b[i] = b[i] + mingap
-                        fb[i] = fun(b[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
-            else:
-                if fa[i] < fb[i]:
-                    while fb[i] < 0:
-                        a[i], fa[i] = b[i], fb[i]
-                        b[i] = b[i] + mingap
-                        fb[i] = fun(b[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
-                else:
-                    while fa[i] < 0:
-                        b[i], fb[i] = a[i], fa[i]
-                        a[i] = a[i] - mingap
-                        fa[i] = fun(a[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+        a, b, fa, fb = self.detr_intvl(fun, a, T, iomega, args)
         index = torch.nonzero(fa.abs() < self.tol_bi, as_tuple=True)
         if len(index[0]) > 0: b[index] = a[index]
         index = torch.nonzero(fb.abs() < self.tol_bi, as_tuple=True)
@@ -287,7 +267,8 @@ if __name__ == "__main__":
     d_filling = None
     tol_sc = 1e-6
     tol_bi = 1e-6
-    scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, device)
+    mingap = 5.
+    scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
     U = torch.tensor([1., 4.])

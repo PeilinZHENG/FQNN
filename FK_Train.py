@@ -109,12 +109,16 @@ parser.add_argument('--maxEpoch', default=100, type=int,
                     help='max epoch')
 parser.add_argument('--milestone', default=30, type=int,
                     help='milestone')
-parser.add_argument('--filling', default=0.5, type=float,
-                    help='Filling')
+parser.add_argument('--f_filling', default=0.5, type=float,
+                    help='f electron filling')
+parser.add_argument('--d_filling', default=0.5, type=float,
+                    help='d electron filling')
 parser.add_argument('--tol_sc', default=1e-8, type=float,
                     help='tolerance of self-consistent')
 parser.add_argument('--tol_bi', default=1e-6, type=float,
                     help='tolerance of bisection')
+parser.add_argument('--mingap', default=5., type=float,
+                    help='mingap for determining the interval of the bisection')
 
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
@@ -154,14 +158,14 @@ def main(args):
         args.input_size, args.embedding_size, args.hidden_size, args.output_size))
     args.f.write('z={}\thermi={}\tdiago={}\trestr={}\tscale={}\treal={}\tdouble={}\n'.format(
         None, args.hermi, args.diago, args.restr, args.scale, args.real, args.double))
-    args.f.write('count={}\tiota={}\tmomentum={}\tmaxEpoch={}\tmilestone={}\tfilling={}\ttol_sc={}\n'.format(
-        args.count, args.iota, args.momentum, args.maxEpoch, args.milestone, args.filling, args.tol_sc))
-    args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\tgradsnorm={}\ttol_bi={}\n'.format(
-        args.data, args.entanglement, args.delta, args.tc, args.gradsnorm, args.tol_bi))
+    args.f.write('count={}\tiota={}\tmomentum={}\tmaxEpoch={}\tmilestone={}\tf_filling={}\td_filling={}\n'.format(
+        args.count, args.iota, args.momentum, args.maxEpoch, args.milestone, args.f_filling, args.d_filling))
+    args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\ttol_sc={}\ttol_bi={}\tmingap={}\n'.format(
+        args.data, args.entanglement, args.delta, args.tc, args.tol_sc, args.tol_bi, args.mingap))
     args.f.write('lossfunc={}\topt={}\tlr={}\tbetas={}\twd={}\tlars={}\tdevice={}\tseed={}\n'.format(
         args.loss, args.opt, args.lr, args.betas, args.wd, args.lars, args.device, args.seed))
-    args.f.write('sch={}\tgamma={}\tstep_size={}\tinit_bound={}\tdrop={}\tdisor={}\n'.format(
-        args.sch, args.gamma, args.ss, args.init_bound, args.drop, args.disor))
+    args.f.write('sch={}\tgamma={}\tstep_size={}\tinit_bound={}\tdrop={}\tdisor={}\tgradsnorm={}\n'.format(
+        args.sch, args.gamma, args.ss, args.init_bound, args.drop, args.disor, args.gradsnorm))
     args.f.write('workers={}\tepochs={}\tstart_epoch={}\tbatch_size={}\tSC2D={}\tSF={}\n'.format(
         args.workers, args.epochs, args.start_epoch, args.batch_size, args.SC2D, args.SF))
     args.f.write('pretrained={}\n'.format(args.pretrained))
@@ -217,8 +221,8 @@ def main(args):
 def main_worker(args):
     global best_acc1
     print("Use GPU: {} for training".format(args.gpu))
-    scf = DMFT(args.count, args.iota, args.momentum, args.maxEpoch, args.milestone, args.filling, args.tol_sc,
-               args.tol_bi, args.device, args.double)
+    scf = DMFT(args.count, args.iota, args.momentum, args.maxEpoch, args.milestone, args.f_filling, args.d_filling,
+               args.tol_sc, args.tol_bi, args.mingap, args.device, args.double)
 
     # create model
     Net = args.Net[:args.Net.index('_')]
