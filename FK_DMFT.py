@@ -150,7 +150,7 @@ class DMFT:
             if prinfo: print('<nd>: {:3f}'.format(torch.mean(self.calc_nd_init(mu, H0, T)).item()))
             H0 = H0 - torch.diag_embed(mu.tile(1, 1, size))
             mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
-        H0 = H0.tile(1, self.count, 1, 1) # (bz, self.count, size, size)
+        H0 = H0.tile(1, self.count, 1, 1)   # (bz, self.count, size, size)
         if model is not None: model.z = iomega
         '''0. initialize self-energy'''
         if SEinit is None:
@@ -167,7 +167,7 @@ class DMFT:
             H = H0 + torch.diag_embed(SE)
             if fixnd: mu = self.bisearch_dec(partial(self.fix_filling, model=model, f_ele=False), mu, H, T, iomega)
             Gloc = self.calc_Gloc(mu, H, iomega, model)
-            if prinfo and fixnd: print('{} loop <nd>: {:.3f}'.format(l, self.calc_nd(Gloc, T, iomega).mean().item()))
+            if fixnd and prinfo: print('{} loop <nd>: {:.3f}'.format(l, self.calc_nd(Gloc, T, iomega).mean().item()))
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
