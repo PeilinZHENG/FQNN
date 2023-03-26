@@ -218,7 +218,7 @@ class DMFT:
                     if model is not None: model.z = iomega
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
-                    m = (self.momentum + torch.normal(0., self.momDisor * l / 1000, (1,))).clamp(min=0., max=1.).item()
+                    m = (self.momentum + torch.normal(0., self.momDisor, (1,))).clamp(min=0., max=1.).item()
                 SE = m * SE + (1. - m) * (WeissInv - Gimp.pow(-1))
         # if prinfo: print(torch.round(best_nf, decimals=3))
         OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
@@ -233,11 +233,27 @@ class DMFT:
             return best_SE - best_mu  # (bz, self.count, size)
 
 
-def opf(nf):
+def op1(nf):
     L = int(nf.shape[-1] ** 0.5)
     nf = nf.view(-1, L, L)
     op = torch.stack(((nf[:, 0, 0] - nf[:, 0, 1]).abs(), (nf[:, 0, 0] - nf[:, 1, 0]).abs()), dim=0)
     return torch.min(op, dim=0)[0]
+
+
+def op2(nf):
+    _, bz, size = nf.shape
+    L = int(np.sqrt(size))
+    assert L % 2 == 0
+    block = np.tile(np.array([1, -1]), int(L / 2))[np.newaxis, :]  # [[1,-1,1,-1]]
+    check_board_pattern = np.tile(np.concatenate((block, block * (-1)), axis=0), (int(L / 2), 1)).flatten()  # (size)
+    x_board_pattern = np.repeat(block, L, axis=0).flatten()
+    y_board_pattern = np.repeat(block, L)
+    check_op = np.abs(np.sum(nf * check_board_pattern, axis=-1) * 2 / size)
+    x_op = np.abs(np.sum(nf * x_board_pattern, axis=-1) * 2 / size)
+    y_op = np.abs(np.sum(nf * y_board_pattern, axis=-1) * 2 / size)
+    xy_op = np.max(np.stack((x_op, y_op), axis=2), axis=2)
+    return check_op, xy_op  # (bz,2)
+
 
 
 if __name__ == "__main__":
@@ -286,7 +302,7 @@ if __name__ == "__main__":
     mu = torch.zeros(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     t = time.time()
-    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(opf,), prinfo=True)  # (bz, 1, size)
+    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(op1, op2), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     exit(0)
 

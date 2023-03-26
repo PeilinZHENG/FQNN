@@ -13,7 +13,7 @@ f_filling=0.5
 d_filling=None
 tol_sc=1e-6
 tol_bi=1e-7
-mingap=5
+mingap=1
 
 # Parameters of training
 L=14
