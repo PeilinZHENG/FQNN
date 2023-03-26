@@ -105,6 +105,8 @@ parser.add_argument('--iota', default=1e-3, type=float,
                     help='iota')
 parser.add_argument('--momentum', default=0., type=float,
                     help='momentum')
+parser.add_argument('--momDisor', default=0., type=float,
+                    help='disorder of momentum')
 parser.add_argument('--maxEpoch', default=100, type=int,
                     help='max epoch')
 parser.add_argument('--milestone', default=30, type=int,
@@ -158,14 +160,16 @@ def main(args):
         args.input_size, args.embedding_size, args.hidden_size, args.output_size))
     args.f.write('z={}\thermi={}\tdiago={}\trestr={}\tscale={}\treal={}\tdouble={}\n'.format(
         None, args.hermi, args.diago, args.restr, args.scale, args.real, args.double))
-    args.f.write('count={}\tiota={}\tmomentum={}\tmaxEpoch={}\tmilestone={}\tf_filling={}\td_filling={}\n'.format(
-        args.count, args.iota, args.momentum, args.maxEpoch, args.milestone, args.f_filling, args.d_filling))
-    args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\ttol_sc={}\ttol_bi={}\tmingap={}\n'.format(
-        args.data, args.entanglement, args.delta, args.tc, args.tol_sc, args.tol_bi, args.mingap))
-    args.f.write('lossfunc={}\topt={}\tlr={}\tbetas={}\twd={}\tlars={}\tdevice={}\tseed={}\n'.format(
-        args.loss, args.opt, args.lr, args.betas, args.wd, args.lars, args.device, args.seed))
-    args.f.write('sch={}\tgamma={}\tstep_size={}\tinit_bound={}\tdrop={}\tdisor={}\tgradsnorm={}\n'.format(
-        args.sch, args.gamma, args.ss, args.init_bound, args.drop, args.disor, args.gradsnorm))
+    args.f.write('count={}\tiota={}\tmomentum={}\tmomDisor={}\tmaxEpoch={}\tmilestone={}\n'.format(
+        args.count, args.iota, args.momentum, args.momDisor, args.maxEpoch, args.milestone))
+    args.f.write('f_filling={}\td_filling={}\ttol_sc={}\ttol_bi={}\tmingap={}\n'.format(
+        args.f_filling, args.d_filling, args.tol_sc, args.tol_bi, args.mingap))
+    args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\tgradsnorm={}\tseed={}\n'.format(
+        args.data, args.entanglement, args.delta, args.tc, args.gradsnorm, args.seed))
+    args.f.write('lossfunc={}\topt={}\tlr={}\tbetas={}\twd={}\tlars={}\tdevice={}\n'.format(
+        args.loss, args.opt, args.lr, args.betas, args.wd, args.lars, args.device))
+    args.f.write('sch={}\tgamma={}\tstep_size={}\tinit_bound={}\tdrop={}\tdisor={}\n'.format(
+        args.sch, args.gamma, args.ss, args.init_bound, args.drop, args.disor))
     args.f.write('workers={}\tepochs={}\tstart_epoch={}\tbatch_size={}\tSC2D={}\tSF={}\n'.format(
         args.workers, args.epochs, args.start_epoch, args.batch_size, args.SC2D, args.SF))
     args.f.write('pretrained={}\n'.format(args.pretrained))
@@ -221,8 +225,8 @@ def main(args):
 def main_worker(args):
     global best_acc1
     print("Use GPU: {} for training".format(args.gpu))
-    scf = DMFT(args.count, args.iota, args.momentum, args.maxEpoch, args.milestone, args.f_filling, args.d_filling,
-               args.tol_sc, args.tol_bi, args.mingap, args.device, args.double)
+    scf = DMFT(args.count, args.iota, args.momentum, args.momDisor, args.maxEpoch, args.milestone, args.f_filling,
+               args.d_filling, args.tol_sc, args.tol_bi, args.mingap, args.device, args.double)
 
     # create model
     Net = args.Net[:args.Net.index('_')]

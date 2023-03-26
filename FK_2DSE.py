@@ -19,6 +19,7 @@ if processors == 0: bz = 40
 count = 20
 iota = 0.
 momentum = 0.5
+momDisor = 0.1
 maxEpoch = 1000
 milestone = 30
 f_filling = 0.5
@@ -48,7 +49,7 @@ if __name__ == "__main__":
     path = 'datasets/FK_{}/{}'.format(L, TYPE)
     H0 = torch.load('{}/dataset.pt'.format(path))  # (amount, scf.count, L ** 2, L ** 2)
     target = torch.load('{}/labels.pt'.format(path))  # (amount, 3)
-    scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device, double)
+    scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device, double)
 
     if processors > 0:
         SE = []
