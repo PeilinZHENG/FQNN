@@ -103,7 +103,8 @@ class DMFT:
         idx = torch.nonzero(fb.abs() < self.tol_bi, as_tuple=True)[0]
         if len(idx) > 0: best[idx] = b[idx]
         idx = torch.nonzero((fa.abs() >= self.tol_bi) & (fb.abs() >= self.tol_bi), as_tuple=True)[0]
-        a, b, T, iomega, args = a[idx], b[idx], T[idx], iomega[idx], args[idx]
+        a, b, T, args = a[idx], b[idx], T[idx], args[idx]
+        if iomega is not None: iomega = iomega[idx]
         while True:
             c = (a + b) / 2
             fc = fun(c, args, T, iomega)
@@ -114,7 +115,8 @@ class DMFT:
                 bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a).abs().view(-1) / 2 >= self.tol_bi),
                                         as_tuple=True)[0]
                 a, b, c, fc, idx = a[bad_idx], b[bad_idx], c[bad_idx], fc[bad_idx], idx[bad_idx]
-                T, iomega, args = T[bad_idx], iomega[bad_idx], args[bad_idx]
+                T, args = T[bad_idx], args[bad_idx]
+                if iomega is not None: iomega = iomega[bad_idx]
                 index = torch.nonzero(fc.sign() * fun(a, args, T, iomega).sign() < 0, as_tuple=True)
                 b[index] = c[index]
                 c[index] = a[index]
@@ -125,7 +127,7 @@ class DMFT:
 
     def calc_OP(self, fun, nf, prinfo=False):
         op = fun(nf.squeeze(1))
-        if prinfo: print('order parameter:\n', torch.round(op, decimals=3))
+        if prinfo: print('order parameter:\n', torch.round(op, decimals=4))
         return op
 
     @torch.no_grad()
@@ -217,7 +219,7 @@ class DMFT:
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
-        if prinfo: print(torch.round(best_nf, decimals=3))
+        if prinfo: print(torch.round(best_nf, decimals=4))
         OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
