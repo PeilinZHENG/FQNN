@@ -127,7 +127,7 @@ class DMFT:
 
     def calc_OP(self, fun, nf, prinfo=False):
         op = fun(nf.squeeze(1))
-        if prinfo: print('order parameter:\n', torch.round(op, decimals=4))
+        if prinfo: print('order parameter:\n', torch.round(op, decimals=3))
         return op
 
     @torch.no_grad()
@@ -219,7 +219,7 @@ class DMFT:
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
-        if prinfo: print(torch.round(best_nf, decimals=4))
+        if prinfo: print(torch.round(best_nf, decimals=3))
         OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
