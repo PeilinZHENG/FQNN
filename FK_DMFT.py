@@ -218,9 +218,9 @@ class DMFT:
                     if model is not None: model.z = iomega
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
-                    m = (self.momentum + self.momDisor * torch.randn(1)).clamp(min=0., max=1.).item()
+                    m = (self.momentum + torch.normal(0., self.momDisor * l / 1000, (1,))).clamp(min=0., max=1.).item()
                 SE = m * SE + (1. - m) * (WeissInv - Gimp.pow(-1))
-        if prinfo: print(torch.round(best_nf, decimals=3))
+        # if prinfo: print(torch.round(best_nf, decimals=3))
         OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
@@ -280,7 +280,7 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
-    tp = torch.tensor([0.1, 1.4])
+    tp = torch.linspace(0.1, 1.4, 27)#torch.tensor([0.1, 1.4])
     U = torch.ones(len(tp))
     T = T * torch.ones(len(U))
     mu = torch.zeros(len(U))
