@@ -30,6 +30,10 @@ class DMFT:
     def calc_nd(self, Gloc, T, iomega):
         return (T * torch.sum(Gloc * (iomega * self.iota).exp(), dim=1)).real  # (bz, size)
 
+    def calc_nd_(self, mu, T, H0):
+        z = (mu.real - torch.linalg.eigvalsh(H0)).squeeze(1) / T.real
+        return torch.nan_to_num(torch.sigmoid(z), nan=0.)  # (bz, size)
+
     def calc_nf(self, E_mu, T, iomega, UoverWI):
         z = torch.sum((1 - UoverWI).log() * (iomega * self.iota).exp(), dim=1) - E_mu / T # (bz, size)
         return torch.nan_to_num(torch.sigmoid(z).real, nan=0.)  # (bz, size)
@@ -38,7 +42,8 @@ class DMFT:
         if f_ele:
             return self.calc_nf(a, T, iomega, args).mean(dim=-1) - self.f_filling   # (bz,)
         else:
-            return self.calc_nd(self.calc_Gloc(a, iomega, args, model), T, iomega).mean(dim=-1) - self.d_filling # (bz,)
+            return self.calc_nd_(a, T, args).mean(dim=-1) - self.d_filling # (bz,)
+            # return self.calc_nd(self.calc_Gloc(a, iomega, args, model), T, iomega).mean(dim=-1) - self.d_filling # (bz,)
 
     def detr_intvl(self, fun, a, T, iomega, args):
         fa = fun(a, T, iomega, args)
@@ -127,16 +132,21 @@ class DMFT:
                  OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # E_mu, U: (bz,)
         device, dtype = self.iomega0.device, self.iomega0.dtype
         bz, _, _, size = H0.shape
+        T = T.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
+        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1)  # (bz, self.count, 1)
+        U = U[:, None, None].to(device=device, dtype=dtype)  # (bz, 1, 1)
         if E_mu is None:
             assert self.f_filling is not None
             E_mu = torch.zeros((bz, 1), device=device, dtype=dtype)  # (bz, 1)
         else:
             E_mu = E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
         mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
-        T = T.unsqueeze(-1).to(device=device, dtype=dtype) # (bz, 1)
-        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1) # (bz, self.count, 1)
+        H0 = H0.to(device=device, dtype=dtype)
+        if self.d_filling is not None:
+            mu = self.bisection_(partial(self.fix_filling, f_ele=False), mu, T, iomega, H0)
+            if prinfo: print('<nd>: {}'.format(torch.mean(self.calc_nd_(mu, T, H0), dim=-1)))
+            H0 = H0 - torch.diag_embed(mu.tile(1, 1, size))
         H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, self.count, size, size)
-        U = U[:, None, None].to(device=device, dtype=dtype) # (bz, 1, 1)
         if model is not None: model.z = iomega
         '''0. initialize self-energy'''
         if SEinit is None:
@@ -151,11 +161,10 @@ class DMFT:
         avg_tol_sc = self.tol_sc / bz ** 0.5
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
-            H = H0 + torch.diag_embed(SE)
-            if self.d_filling is not None:
-                mu = self.bisection_(partial(self.fix_filling, model=model, f_ele=False), mu, T, iomega, H)
-            Gloc = self.calc_Gloc(mu, iomega, H, model)
-            if prinfo: print('{} loop <nd>: {:.8f}'.format(l, torch.mean(self.calc_nd(Gloc, T, iomega)).item()))
+            # if self.d_filling is not None:
+            #     mu = self.bisection_(partial(self.fix_filling, model=model, f_ele=False), mu, T, iomega, H)
+            Gloc = self.calc_Gloc(mu, iomega, H0 + torch.diag_embed(SE), model)
+            # if prinfo: print('{} loop <nd>: {:.8f}'.format(l, torch.mean(self.calc_nd(Gloc, T, iomega)).item()))
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
@@ -258,21 +267,20 @@ if __name__ == "__main__":
     maxEpoch = 5000
     milestone = 30
     f_filling = 0.5
-    d_filling = None
+    d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
-    mingap = 1.
+    mingap = 5.
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
-    U = torch.tensor([1., 4.])
-    tp = torch.zeros(len(U))
+    tp = torch.tensor([0.1, 1.4])
+    U = torch.ones(len(tp))
     T = T * torch.ones(len(U))
-    mu = U / 2  # torch.zeros(len(U))
+    mu = torch.zeros(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
-    print((1 / (torch.exp(torch.linalg.eigvalsh(H0).squeeze(1) / T.unsqueeze(-1)) + 1)).mean(dim=1))
     t = time.time()
-    SE, OP = scf(T, H0, U, reOP=True, prinfo=True)  # (bz, 1, size)
+    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(opf,), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     exit(0)
 

@@ -23,17 +23,17 @@ def Ham(L, mu, tp=0.):
             # nearest neighbor
             nx = l2c(x + 1, y, L)
             ny = l2c(x, y + 1, L)
-            H[nx, n] = H[nx, n] - 1.
-            H[n, nx] = H[n, nx] - 1.
-            H[ny, n] = H[ny, n] - 1.
-            H[n, ny] = H[n, ny] - 1.
+            H[nx, n] = H[nx, n] + 1.
+            H[n, nx] = H[n, nx] + 1.
+            H[ny, n] = H[ny, n] + 1.
+            H[n, ny] = H[n, ny] + 1.
             # next nearest neighbor
             n1 = l2c(x + 1, y + 1, L)
             n2 = l2c(x + 1, y - 1, L)
-            H[n1, n] = H[n1, n] - tp
-            H[n, n1] = H[n, n1] - tp
-            H[n2, n] = H[n2, n] - tp
-            H[n, n2] = H[n, n2] - tp
+            H[n1, n] = H[n1, n] + tp
+            H[n, n1] = H[n, n1] + tp
+            H[n2, n] = H[n2, n] + tp
+            H[n, n2] = H[n, n2] + tp
     return H
 
 
