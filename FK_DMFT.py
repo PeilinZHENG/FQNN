@@ -31,8 +31,9 @@ class DMFT:
         return (T * torch.sum(Gloc * (iomega * self.iota).exp(), dim=1)).real  # (bz, size)
 
     def calc_nd_init(self, mu, H0, T):
-        z = (mu.real - torch.linalg.eigvalsh(H0)).squeeze(1) / T.real
-        return torch.nan_to_num(torch.sigmoid(z), nan=0.)  # (bz, size)
+        E, V = torch.linalg.eigh(H0)   # (bz, 1, size) (bz, 1, size, size)
+        fd = torch.nan_to_num(torch.sigmoid((mu.real - E).squeeze(1) / T.real), nan=0.).unsqueeze(-1)  # (bz, size, 1)
+        return torch.matmul(V.squeeze(1).abs().pow(2), fd).squeeze(-1)  # (bz, size)
 
     def calc_nf(self, E_mu, UoverWI, T, iomega):
         z = torch.sum((1 - UoverWI).log() * (iomega * self.iota).exp(), dim=1) - E_mu / T # (bz, size)
@@ -86,10 +87,8 @@ class DMFT:
             c = (a + b) / 2
             fc = fun(c, args, T, iomega)
             index = torch.nonzero(fc.abs() < self.tol_bi, as_tuple=True)
-            if len(index[0]) > 0:
-                a[index], b[index] = c[index], c[index]
-            if torch.linalg.norm((b - a) / 2) < self.tol_bi * sbz:
-                return c  # (bz, 1)
+            if len(index[0]) > 0: a[index], b[index] = c[index], c[index]
+            if torch.linalg.norm((b - a) / 2) < self.tol_bi * sbz: return c  # (bz, 1)
             index = torch.nonzero(fc.sign() * fun(a, args, T, iomega).sign() < 0, as_tuple=True)
             b[index] = c[index]
             c[index] = a[index]
@@ -103,17 +102,16 @@ class DMFT:
         idx = torch.nonzero(fb.abs() < self.tol_bi, as_tuple=True)[0]
         if len(idx) > 0: best[idx] = b[idx]
         idx = torch.nonzero((fa.abs() >= self.tol_bi) & (fb.abs() >= self.tol_bi), as_tuple=True)[0]
-        a, b, T, args = a[idx], b[idx], T[idx], args[idx]
-        if iomega is not None: iomega = iomega[idx]
-        while True:
+        if len(idx) > 0:
+            a, b, T, args = a[idx], b[idx], T[idx], args[idx]
+            if iomega is not None: iomega = iomega[idx]
+        while len(idx) > 0:
             c = (a + b) / 2
             fc = fun(c, args, T, iomega)
-            good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a).abs().view(-1) / 2 < self.tol_bi),
-                                     as_tuple=True)[0]
+            good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a).abs().view(-1) / 2 < self.tol_bi), as_tuple=True)[0]
             if len(good_idx) > 0: best[idx[good_idx]] = c[good_idx]
             if len(good_idx) < len(c):
-                bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a).abs().view(-1) / 2 >= self.tol_bi),
-                                        as_tuple=True)[0]
+                bad_idx = torch.nonzero((fc.abs() >= self.tol_bi) & ((b - a).abs().view(-1) / 2 >= self.tol_bi), as_tuple=True)[0]
                 a, b, c, fc, idx = a[bad_idx], b[bad_idx], c[bad_idx], fc[bad_idx], idx[bad_idx]
                 T, args = T[bad_idx], args[bad_idx]
                 if iomega is not None: iomega = iomega[bad_idx]
@@ -148,6 +146,7 @@ class DMFT:
         H0 = H0.to(device=device, dtype=dtype)
         if self.d_filling is not None:
             mu = self.bisection_(partial(self.fix_filling, f_ele=False), mu, H0, T)
+            print(mu)
             if prinfo: print('<nd>: {:3f}'.format(torch.mean(self.calc_nd_init(mu, H0, T)).item()))
             H0 = H0 - torch.diag_embed(mu.tile(1, 1, size))
             mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
@@ -274,7 +273,7 @@ if __name__ == "__main__":
     d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
-    mingap = 5.
+    mingap = 1.
     scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
