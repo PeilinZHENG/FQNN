@@ -26,7 +26,7 @@ f_filling = 0.5
 d_filling = None
 tol_sc = 1e-6
 tol_bi = 1e-6
-mingap = 5.
+mingap = 1.
 double = True
 device = torch.device("cuda")
 
