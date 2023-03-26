@@ -231,6 +231,13 @@ def float_or_complex(value):
         return complex(value)
 
 
+def None_or_float(value):
+    try:
+        return float(value)
+    except:
+        return None
+
+
 def None_or_complex(value):
     if value.startswith('_'):
         value = '-' + value[1:]

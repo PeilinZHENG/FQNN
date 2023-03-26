@@ -128,8 +128,9 @@ class DMFT:
         return op
 
     @torch.no_grad()
-    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, reOP=False, reBad=False,
+    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, fixnd=False, reOP=False, reBad=False,
                  OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # E_mu, U: (bz,)
+        if fixnd: assert self.d_filling is not None
         device, dtype = self.iomega0.device, self.iomega0.dtype
         bz, _, _, size = H0.shape
         T = T.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
@@ -146,7 +147,7 @@ class DMFT:
             mu = self.bisection_(partial(self.fix_filling, f_ele=False), mu, T, iomega, H0)
             if prinfo: print('<nd>: {}'.format(torch.mean(self.calc_nd_(mu, T, H0), dim=-1)))
             H0 = H0 - torch.diag_embed(mu.tile(1, 1, size))
-        H0 = H0.tile(1, self.count, 1, 1).to(device=device, dtype=dtype) # (bz, self.count, size, size)
+        H0 = H0.tile(1, self.count, 1, 1) # (bz, self.count, size, size)
         if model is not None: model.z = iomega
         '''0. initialize self-energy'''
         if SEinit is None:
@@ -161,16 +162,15 @@ class DMFT:
         avg_tol_sc = self.tol_sc / bz ** 0.5
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
-            # if self.d_filling is not None:
-            #     mu = self.bisection_(partial(self.fix_filling, model=model, f_ele=False), mu, T, iomega, H)
-            Gloc = self.calc_Gloc(mu, iomega, H0 + torch.diag_embed(SE), model)
+            H = H0 + torch.diag_embed(SE)
+            if fixnd: mu = self.bisection_(partial(self.fix_filling, model=model, f_ele=False), mu, T, iomega, H)
+            Gloc = self.calc_Gloc(mu, iomega, H, model)
             # if prinfo: print('{} loop <nd>: {:.8f}'.format(l, torch.mean(self.calc_nd(Gloc, T, iomega)).item()))
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
             UoverWI = U / WeissInv
-            if self.f_filling is not None:
-                E_mu = self.bisection(self.fix_filling, E_mu, T, iomega, UoverWI)
+            if self.f_filling is not None: E_mu = self.bisection(self.fix_filling, E_mu, T, iomega, UoverWI)
             nf = self.calc_nf(E_mu, T, iomega, UoverWI).unsqueeze(1) # (bz, 1, size)
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
             if prinfo: print('{} loop <nf>: {:.3f}'.format(l, torch.mean(nf).item()))
@@ -216,6 +216,7 @@ class DMFT:
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
                 SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
+        if prinfo: print(torch.round(best_nf, decimals=3))
         OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
@@ -256,7 +257,7 @@ if __name__ == "__main__":
     L = 12  # size = L ** 2
     data = 'FK_{}'.format(L)
     Net = 'Naive_2d_0'
-    T = 0.1
+    T = 0.005
     save = True
     show = True
 

@@ -109,9 +109,9 @@ parser.add_argument('--maxEpoch', default=100, type=int,
                     help='max epoch')
 parser.add_argument('--milestone', default=30, type=int,
                     help='milestone')
-parser.add_argument('--f_filling', default=0.5, type=float,
+parser.add_argument('--f_filling', default=0.5, type=None_or_float,
                     help='f electron filling')
-parser.add_argument('--d_filling', default=0.5, type=float,
+parser.add_argument('--d_filling', default=0.5, type=None_or_float,
                     help='d electron filling')
 parser.add_argument('--tol_sc', default=1e-8, type=float,
                     help='tolerance of self-consistent')
