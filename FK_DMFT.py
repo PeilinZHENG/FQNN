@@ -21,7 +21,7 @@ class DMFT:
         self.iomega0 = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(0) + 1) * torch.pi  # (1, self.count)
         if double: self.iomega0 = self.iomega0.type(torch.complex128)
 
-    def calc_Gloc(self, mu, iomega, H, model=None):
+    def calc_Gloc(self, mu, H, iomega, model=None):
         if model is None:
             return torch.linalg.diagonal((torch.diag_embed((iomega + mu).tile(1, 1, H.shape[-1])) - H).inverse())  # (bz, self.count, size)
         else:
@@ -30,72 +30,73 @@ class DMFT:
     def calc_nd(self, Gloc, T, iomega):
         return (T * torch.sum(Gloc * (iomega * self.iota).exp(), dim=1)).real  # (bz, size)
 
-    def calc_nd_(self, mu, T, H0):
+    def calc_nd_init(self, mu, H0, T):
         z = (mu.real - torch.linalg.eigvalsh(H0)).squeeze(1) / T.real
         return torch.nan_to_num(torch.sigmoid(z), nan=0.)  # (bz, size)
 
-    def calc_nf(self, E_mu, T, iomega, UoverWI):
+    def calc_nf(self, E_mu, UoverWI, T, iomega):
         z = torch.sum((1 - UoverWI).log() * (iomega * self.iota).exp(), dim=1) - E_mu / T # (bz, size)
         return torch.nan_to_num(torch.sigmoid(z).real, nan=0.)  # (bz, size)
 
-    def fix_filling(self, a, T, iomega, args, model=None, f_ele=True):
+    def fix_filling(self, a, args, T, iomega=None, model=None, f_ele=True):
         if f_ele:
-            return self.calc_nf(a, T, iomega, args).mean(dim=-1) - self.f_filling   # (bz,)
+            return self.calc_nf(a, args, T, iomega).mean(dim=-1) - self.f_filling   # (bz,)
+        elif iomega is None:
+            return self.calc_nd_init(a, args, T).mean(dim=-1) - self.d_filling # (bz,)
         else:
-            return self.calc_nd_(a, T, args).mean(dim=-1) - self.d_filling # (bz,)
-            # return self.calc_nd(self.calc_Gloc(a, iomega, args, model), T, iomega).mean(dim=-1) - self.d_filling # (bz,)
+            return self.calc_nd(self.calc_Gloc(a, args, iomega, model), T, iomega).mean(dim=-1) - self.d_filling # (bz,)
 
-    def detr_intvl(self, fun, a, T, iomega, args):
-        fa = fun(a, T, iomega, args)
+    def detr_intvl(self, fun, a, args, T, iomega):
+        fa = fun(a, args, T, iomega)
         b = a + self.mingap
-        fb = fun(b, T, iomega, args)
+        fb = fun(b, args, T, iomega)
         for i in torch.nonzero(fa.sign() * fb.sign() > 0, as_tuple=True)[0]:
             if fa[i] > 0:
                 if fa[i] < fb[i]:
                     while fa[i] > 0:
                         b[i], fb[i] = a[i], fa[i]
                         a[i] = a[i] - self.mingap
-                        fa[i] = fun(a[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+                        fa[i] = fun(a[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
                 else:
                     while fb[i] > 0:
                         a[i], fa[i] = b[i], fb[i]
                         b[i] = b[i] + self.mingap
-                        fb[i] = fun(b[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+                        fb[i] = fun(b[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
             else:
                 if fa[i] < fb[i]:
                     while fb[i] < 0:
                         a[i], fa[i] = b[i], fb[i]
                         b[i] = b[i] + self.mingap
-                        fb[i] = fun(b[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+                        fb[i] = fun(b[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
                 else:
                     while fa[i] < 0:
                         b[i], fb[i] = a[i], fa[i]
                         a[i] = a[i] - self.mingap
-                        fa[i] = fun(a[i:i + 1], T[i:i + 1], iomega[i:i + 1], args[i:i + 1])
+                        fa[i] = fun(a[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
         return a, b, fa, fb
 
-    def bisection(self, fun, a, T, iomega, args):
+    def bisection(self, fun, a, args, T, iomega=None):
         sbz = a.size(0) ** 0.5
-        a, b, fa, fb = self.detr_intvl(fun, a, T, iomega, args)
+        a, b, fa, fb = self.detr_intvl(fun, a, args, T, iomega)
         index = torch.nonzero(fa.abs() < self.tol_bi, as_tuple=True)
         if len(index[0]) > 0: b[index] = a[index]
         index = torch.nonzero(fb.abs() < self.tol_bi, as_tuple=True)
         if len(index[0]) > 0: a[index] = b[index]
         while True:
             c = (a + b) / 2
-            fc = fun(c, T, iomega, args)
+            fc = fun(c, args, T, iomega)
             index = torch.nonzero(fc.abs() < self.tol_bi, as_tuple=True)
             if len(index[0]) > 0:
                 a[index], b[index] = c[index], c[index]
             if torch.linalg.norm((b - a) / 2) < self.tol_bi * sbz:
                 return c  # (bz, 1)
-            index = torch.nonzero(fc.sign() * fun(a, T, iomega, args).sign() < 0, as_tuple=True)
+            index = torch.nonzero(fc.sign() * fun(a, args, T, iomega).sign() < 0, as_tuple=True)
             b[index] = c[index]
             c[index] = a[index]
             a = c
 
-    def bisection_(self, fun, a, T, iomega, args):
-        a, b, fa, fb = self.detr_intvl(fun, a, T, iomega, args)
+    def bisection_(self, fun, a, args, T, iomega=None):
+        a, b, fa, fb = self.detr_intvl(fun, a, args, T, iomega)
         best = torch.zeros_like(a, dtype=a.dtype, device=a.device)
         idx = torch.nonzero(fa.abs() < self.tol_bi, as_tuple=True)[0]
         if len(idx) > 0: best[idx] = a[idx]
@@ -105,7 +106,7 @@ class DMFT:
         a, b, T, iomega, args = a[idx], b[idx], T[idx], iomega[idx], args[idx]
         while True:
             c = (a + b) / 2
-            fc = fun(c, T, iomega, args)
+            fc = fun(c, args, T, iomega)
             good_idx = torch.nonzero((fc.abs() < self.tol_bi) | ((b - a).abs().view(-1) / 2 < self.tol_bi),
                                      as_tuple=True)[0]
             if len(good_idx) > 0: best[idx[good_idx]] = c[good_idx]
@@ -114,7 +115,7 @@ class DMFT:
                                         as_tuple=True)[0]
                 a, b, c, fc, idx = a[bad_idx], b[bad_idx], c[bad_idx], fc[bad_idx], idx[bad_idx]
                 T, iomega, args = T[bad_idx], iomega[bad_idx], args[bad_idx]
-                index = torch.nonzero(fc.sign() * fun(a, T, iomega, args).sign() < 0, as_tuple=True)
+                index = torch.nonzero(fc.sign() * fun(a, args, T, iomega).sign() < 0, as_tuple=True)
                 b[index] = c[index]
                 c[index] = a[index]
                 a = c
@@ -144,9 +145,10 @@ class DMFT:
         mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
         H0 = H0.to(device=device, dtype=dtype)
         if self.d_filling is not None:
-            mu = self.bisection_(partial(self.fix_filling, f_ele=False), mu, T, iomega, H0)
-            if prinfo: print('<nd>: {}'.format(torch.mean(self.calc_nd_(mu, T, H0), dim=-1)))
+            mu = self.bisection_(partial(self.fix_filling, f_ele=False), mu, H0, T)
+            if prinfo: print('<nd>: {:3f}'.format(torch.mean(self.calc_nd_init(mu, H0, T)).item()))
             H0 = H0 - torch.diag_embed(mu.tile(1, 1, size))
+            mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
         H0 = H0.tile(1, self.count, 1, 1) # (bz, self.count, size, size)
         if model is not None: model.z = iomega
         '''0. initialize self-energy'''
@@ -158,20 +160,19 @@ class DMFT:
             SE = SEinit.to(device=device, dtype=dtype)
         min_error, min_errors = 1e10, None
         best_SE, best_nf, best_mu = None, None, mu
-        cur_tol_sc = self.tol_sc
-        avg_tol_sc = self.tol_sc / bz ** 0.5
+        cur_tol_sc, avg_tol_sc = self.tol_sc, self.tol_sc / bz ** 0.5
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             H = H0 + torch.diag_embed(SE)
-            if fixnd: mu = self.bisection_(partial(self.fix_filling, model=model, f_ele=False), mu, T, iomega, H)
-            Gloc = self.calc_Gloc(mu, iomega, H, model)
-            # if prinfo: print('{} loop <nd>: {:.8f}'.format(l, torch.mean(self.calc_nd(Gloc, T, iomega)).item()))
+            if fixnd: mu = self.bisection_(partial(self.fix_filling, model=model, f_ele=False), mu, H, T, iomega)
+            Gloc = self.calc_Gloc(mu, H, iomega, model)
+            if prinfo and fixnd: print('{} loop <nd>: {:.3f}'.format(l, self.calc_nd(Gloc, T, iomega).mean().item()))
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
             UoverWI = U / WeissInv
-            if self.f_filling is not None: E_mu = self.bisection(self.fix_filling, E_mu, T, iomega, UoverWI)
-            nf = self.calc_nf(E_mu, T, iomega, UoverWI).unsqueeze(1) # (bz, 1, size)
+            if self.f_filling is not None: E_mu = self.bisection(self.fix_filling, E_mu, UoverWI, T, iomega)
+            nf = self.calc_nf(E_mu, UoverWI, T, iomega).unsqueeze(1) # (bz, 1, size)
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
             if prinfo: print('{} loop <nf>: {:.3f}'.format(l, torch.mean(nf).item()))
             '''4. compute new self-energy'''
@@ -182,10 +183,10 @@ class DMFT:
                 if prinfo: print("final error: {:.5e}".format(tot_error))
                 if l <= self.MILESTONE:
                     best_SE, best_nf = SE, nf
-                    if self.d_filling is not None: best_mu = mu
+                    if fixnd: best_mu = mu
                 else:
                     best_SE[idx], best_nf[idx] = SE, nf
-                    if self.d_filling is not None: best_mu[idx] = mu
+                    if fixnd: best_mu[idx] = mu
                 if reBad:
                     idx = torch.tensor([], dtype=torch.long, device=new_errors.device)
                     min_errors = torch.tensor([], dtype=new_errors.dtype, device=new_errors.device)
@@ -195,7 +196,7 @@ class DMFT:
                 if l <= self.MILESTONE and tot_error < min_error:
                     min_error, min_errors = tot_error, new_errors
                     best_SE, best_nf = SE, nf
-                    if self.d_filling is not None: best_mu = mu
+                    if fixnd: best_mu = mu
                 if l >= self.MILESTONE:
                     if l == self.MILESTONE:
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
@@ -206,7 +207,7 @@ class DMFT:
                             min_errors[better_idx] = new_errors[better_idx]
                             best_SE[idx[better_idx]] = SE[better_idx]
                             best_nf[idx[better_idx]] = nf[better_idx]
-                            if self.d_filling is not None: best_mu[idx[better_idx]] = mu[better_idx]
+                            if fixnd: best_mu[idx[better_idx]] = mu[better_idx]
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
                         idx = idx[bad_idx]
                     H0, SE, iomega = H0[bad_idx], SE[bad_idx], iomega[bad_idx]
