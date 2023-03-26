@@ -76,7 +76,7 @@ class DMFT:
                         fa[i] = fun(a[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
         return a, b, fa, fb
 
-    def bisection(self, fun, a, args, T, iomega=None):
+    def bisearch(self, fun, a, args, T, iomega=None):
         sbz = a.size(0) ** 0.5
         a, b, fa, fb = self.detr_intvl(fun, a, args, T, iomega)
         index = torch.nonzero(fa.abs() < self.tol_bi, as_tuple=True)
@@ -94,7 +94,7 @@ class DMFT:
             c[index] = a[index]
             a = c
 
-    def bisection_(self, fun, a, args, T, iomega=None):
+    def bisearch_dec(self, fun, a, args, T, iomega=None):
         a, b, fa, fb = self.detr_intvl(fun, a, args, T, iomega)
         best = torch.zeros_like(a, dtype=a.dtype, device=a.device)
         idx = torch.nonzero(fa.abs() < self.tol_bi, as_tuple=True)[0]
@@ -145,7 +145,7 @@ class DMFT:
         mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
         H0 = H0.to(device=device, dtype=dtype)
         if self.d_filling is not None:
-            mu = self.bisection_(partial(self.fix_filling, f_ele=False), mu, H0, T)
+            mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False), mu, H0, T)
             print(mu)
             if prinfo: print('<nd>: {:3f}'.format(torch.mean(self.calc_nd_init(mu, H0, T)).item()))
             H0 = H0 - torch.diag_embed(mu.tile(1, 1, size))
@@ -165,14 +165,14 @@ class DMFT:
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             H = H0 + torch.diag_embed(SE)
-            if fixnd: mu = self.bisection_(partial(self.fix_filling, model=model, f_ele=False), mu, H, T, iomega)
+            if fixnd: mu = self.bisearch_dec(partial(self.fix_filling, model=model, f_ele=False), mu, H, T, iomega)
             Gloc = self.calc_Gloc(mu, H, iomega, model)
             if prinfo and fixnd: print('{} loop <nd>: {:.3f}'.format(l, self.calc_nd(Gloc, T, iomega).mean().item()))
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
             UoverWI = U / WeissInv
-            if self.f_filling is not None: E_mu = self.bisection(self.fix_filling, E_mu, UoverWI, T, iomega)
+            if self.f_filling is not None: E_mu = self.bisearch(self.fix_filling, E_mu, UoverWI, T, iomega)
             nf = self.calc_nf(E_mu, UoverWI, T, iomega).unsqueeze(1) # (bz, 1, size)
             Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv  # (bz, self.count, size)
             if prinfo: print('{} loop <nf>: {:.3f}'.format(l, torch.mean(nf).item()))
