@@ -4,13 +4,14 @@ from functools import partial
 
 
 class DMFT:
-    def __init__(self, count: int = 100, iota: float = 0., momentum: float = 0., maxEpoch: int = 100,
-                 milestone: Union[int, None] = None, f_filling: Union[float, None] = None,
+    def __init__(self, count: int = 100, iota: float = 0., momentum: float = 0., momDisor: float = 0.,
+                 maxEpoch: int = 100, milestone: Union[int, None] = None, f_filling: Union[float, None] = None,
                  d_filling: Union[float, None] = None, tol_sc: float = 1e-8, tol_bi: float = 1e-6, mingap : float = 5.,
                  device: torch.device = torch.device('cpu'), double: bool = True):
         self.count = count * 2
         self.iota = iota
         self.momentum = momentum
+        self.momDisor = momDisor
         self.MAXEPOCH = maxEpoch
         self.MILESTONE = maxEpoch if milestone is None or milestone > maxEpoch else milestone
         self.f_filling = f_filling
@@ -146,8 +147,7 @@ class DMFT:
         H0 = H0.to(device=device, dtype=dtype)
         if self.d_filling is not None:
             mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False), mu, H0, T)
-            print(mu)
-            if prinfo: print('<nd>: {:3f}'.format(torch.mean(self.calc_nd_init(mu, H0, T)).item()))
+            if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd_init(mu, H0, T)).item()))
             H0 = H0 - torch.diag_embed(mu.tile(1, 1, size))
             mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
         H0 = H0.tile(1, self.count, 1, 1)   # (bz, self.count, size, size)
@@ -193,6 +193,7 @@ class DMFT:
                     min_errors = torch.tensor([], dtype=new_errors.dtype, device=new_errors.device)
                 break
             else:
+                m = self.momentum
                 if prinfo: print("{} loop error: {:.5e}".format(l, tot_error))
                 if l <= self.MILESTONE and tot_error < min_error:
                     min_error, min_errors = tot_error, new_errors
@@ -217,7 +218,8 @@ class DMFT:
                     if model is not None: model.z = iomega
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
-                SE = self.momentum * SE + (1. - self.momentum) * (WeissInv - Gimp.pow(-1))
+                    m = (self.momentum + self.momDisor * torch.randn(1)).clamp(min=0., max=1.).item()
+                SE = m * SE + (1. - m) * (WeissInv - Gimp.pow(-1))
         if prinfo: print(torch.round(best_nf, decimals=3))
         OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
         if reOP:
@@ -267,6 +269,7 @@ if __name__ == "__main__":
     count = 20
     iota = 0.
     momentum = 0.5
+    momDisor = 0.1
     maxEpoch = 5000
     milestone = 30
     f_filling = 0.5
@@ -274,7 +277,7 @@ if __name__ == "__main__":
     tol_sc = 1e-6
     tol_bi = 1e-7
     mingap = 1.
-    scf = DMFT(count, iota, momentum, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
+    scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
 
     '''2D test'''
     tp = torch.tensor([0.1, 1.4])
