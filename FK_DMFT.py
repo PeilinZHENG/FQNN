@@ -31,10 +31,16 @@ class DMFT:
     def calc_nd(self, Gloc, T, iomega):
         return (T * torch.sum(Gloc * (iomega * self.iota).exp(), dim=1)).real  # (bz, size)
 
-    def calc_nd_init(self, mu, H0, T):
+    def calc_FDD(self, mu, E, T):
+        return torch.nan_to_num(torch.sigmoid((mu.real - E).squeeze(1) / T.real), nan=0.)  # (bz, size)
+
+    def calc_nd0_mean(self, mu, H0, T):
+        return torch.mean(self.calc_FDD(mu, torch.linalg.eigh(H0), T), dim=-1)  # (bz,)
+
+    def calc_nd0(self, mu, H0, T):
         E, V = torch.linalg.eigh(H0)   # (bz, 1, size) (bz, 1, size, size)
-        fd = torch.nan_to_num(torch.sigmoid((mu.real - E).squeeze(1) / T.real), nan=0.).unsqueeze(-1)  # (bz, size, 1)
-        return torch.matmul(V.squeeze(1).abs().pow(2), fd).squeeze(-1)  # (bz, size)
+        fdd = self.calc_FDD(mu, E, T).unsqueeze(-1)  # (bz, size, 1)
+        return torch.matmul(V.squeeze(1).abs().pow(2), fdd).squeeze(-1)  # (bz, size)
 
     def calc_nf(self, E_mu, UoverWI, T, iomega):
         z = torch.sum((1 - UoverWI).log() * (iomega * self.iota).exp(), dim=1) - E_mu / T # (bz, size)
@@ -44,7 +50,7 @@ class DMFT:
         if f_ele:
             return self.calc_nf(a, args, T, iomega).mean(dim=-1) - self.f_filling   # (bz,)
         elif iomega is None:
-            return self.calc_nd_init(a, args, T).mean(dim=-1) - self.d_filling # (bz,)
+            return self.calc_nd0_mean(a, args, T) - self.d_filling # (bz,)
         else:
             return self.calc_nd(self.calc_Gloc(a, args, iomega, model), T, iomega).mean(dim=-1) - self.d_filling # (bz,)
 
@@ -147,7 +153,7 @@ class DMFT:
         H0 = H0.to(device=device, dtype=dtype)
         if self.d_filling is not None:
             mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False), mu, H0, T)
-            if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd_init(mu, H0, T)).item()))
+            if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd0_mean(mu, H0, T)).item()))
             H0 = H0 - torch.diag_embed(mu.tile(1, 1, size))
             mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
         H0 = H0.tile(1, self.count, 1, 1)   # (bz, self.count, size, size)
