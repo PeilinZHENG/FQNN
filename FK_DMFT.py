@@ -224,7 +224,9 @@ class DMFT:
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
                     m = (self.momentum + torch.normal(0., self.momDisor, (1,))).clamp(min=0., max=1.).item()
                 SE = m * SE + (1. - m) * (WeissInv - Gimp.pow(-1))
-        if prinfo: print(best_nf.cpu().numpy())
+        if prinfo:
+            for i, op in enumerate(best_nf.cpu().numpy()):
+                print(i, '\n', op)
         OP = torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
@@ -284,20 +286,20 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     momDisor = 0.01
-    maxEpoch = 5000
+    maxEpoch = 2000
     milestone = 50
     f_filling = 0.5
-    d_filling = 0.5
+    d_filling = None
     tol_sc = 1e-6
     tol_bi = 1e-7
     gap = 5.
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    tp = torch.tensor([0.1, 1.4])
-    U = torch.ones(len(tp))
+    mu = torch.linspace(-0.8, -0.4, 11)
+    tp = 1.4 * torch.ones(len(mu))
+    U = torch.ones(len(mu))
     T = T * torch.ones(len(U))
-    mu = torch.zeros(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     t = time.time()
     SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
