@@ -119,8 +119,8 @@ parser.add_argument('--tol_sc', default=1e-8, type=float,
                     help='tolerance of self-consistent')
 parser.add_argument('--tol_bi', default=1e-6, type=float,
                     help='tolerance of bisection')
-parser.add_argument('--mingap', default=5., type=float,
-                    help='mingap for determining the interval of the bisection')
+parser.add_argument('--gap', default=5., type=float,
+                    help='gap for determining the interval of the bisection')
 
 args = parser.parse_args()
 os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
@@ -162,8 +162,8 @@ def main(args):
         None, args.hermi, args.diago, args.restr, args.scale, args.real, args.double))
     args.f.write('count={}\tiota={}\tmomentum={}\tmomDisor={}\tmaxEpoch={}\tmilestone={}\n'.format(
         args.count, args.iota, args.momentum, args.momDisor, args.maxEpoch, args.milestone))
-    args.f.write('f_filling={}\td_filling={}\ttol_sc={}\ttol_bi={}\tmingap={}\n'.format(
-        args.f_filling, args.d_filling, args.tol_sc, args.tol_bi, args.mingap))
+    args.f.write('f_filling={}\td_filling={}\ttol_sc={}\ttol_bi={}\tgap={}\n'.format(
+        args.f_filling, args.d_filling, args.tol_sc, args.tol_bi, args.gap))
     args.f.write('dataset={}\tentanglement={}\tdelta={}\ttc={}\tgradsnorm={}\tseed={}\n'.format(
         args.data, args.entanglement, args.delta, args.tc, args.gradsnorm, args.seed))
     args.f.write('lossfunc={}\topt={}\tlr={}\tbetas={}\twd={}\tlars={}\tdevice={}\n'.format(
@@ -226,7 +226,7 @@ def main_worker(args):
     global best_acc1
     print("Use GPU: {} for training".format(args.gpu))
     scf = DMFT(args.count, args.iota, args.momentum, args.momDisor, args.maxEpoch, args.milestone, args.f_filling,
-               args.d_filling, args.tol_sc, args.tol_bi, args.mingap, args.device, args.double)
+               args.d_filling, args.tol_sc, args.tol_bi, args.gap, args.device, args.double)
 
     # create model
     Net = args.Net[:args.Net.index('_')]

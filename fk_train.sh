@@ -13,7 +13,7 @@ f_filling=0.5
 d_filling=None
 tol_sc=1e-6
 tol_bi=1e-7
-mingap=1
+gap=1
 
 # Parameters of training
 L=14
@@ -68,7 +68,7 @@ conda activate pytorch
 python FK_Train.py \
   -t $threads -j $workers -b $batchsize -p $print_freq -s $save_freq --epochs $epochs --gpu $gpu --seed $seed \
   --count $count --iota $iota --momentum $momentum --momDisor $momDisor --maxEpoch $maxEpoch --milestone $milestone \
-  --f_filling $f_filling --d_filling $d_filling --tol_sc $tol_sc --tol_bi $tol_bi --mingap $mingap --disor $disor \
+  --f_filling $f_filling --d_filling $d_filling --tol_sc $tol_sc --tol_bi $tol_bi --gap $gap --disor $disor \
   --loss $loss --opt $opt --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss --drop $drop \
   --data $data --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \

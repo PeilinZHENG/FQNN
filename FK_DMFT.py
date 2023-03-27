@@ -6,7 +6,7 @@ from functools import partial
 class DMFT:
     def __init__(self, count: int = 100, iota: float = 0., momentum: float = 0., momDisor: float = 0.,
                  maxEpoch: int = 100, milestone: Union[int, None] = None, f_filling: Union[float, None] = None,
-                 d_filling: Union[float, None] = None, tol_sc: float = 1e-8, tol_bi: float = 1e-6, mingap : float = 5.,
+                 d_filling: Union[float, None] = None, tol_sc: float = 1e-8, tol_bi: float = 1e-6, gap : float = 5.,
                  device: torch.device = torch.device('cpu'), double: bool = True):
         self.count = count * 2
         self.iota = iota
@@ -18,7 +18,7 @@ class DMFT:
         self.d_filling = d_filling
         self.tol_sc = tol_sc
         self.tol_bi = tol_bi
-        self.mingap = mingap
+        self.gap = gap
         self.iomega0 = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(0) + 1) * torch.pi  # (1, self.count)
         if double: self.iomega0 = self.iomega0.type(torch.complex128)
 
@@ -56,30 +56,30 @@ class DMFT:
 
     def detr_intvl(self, fun, a, args, T, iomega):
         fa = fun(a, args, T, iomega)
-        b = a + self.mingap
+        b = a + self.gap
         fb = fun(b, args, T, iomega)
         for i in torch.nonzero(fa.sign() * fb.sign() > 0, as_tuple=True)[0]:
             if fa[i] > 0:
                 if fa[i] < fb[i]:
                     while fa[i] > 0:
                         b[i], fb[i] = a[i], fa[i]
-                        a[i] = a[i] - self.mingap
+                        a[i] = a[i] - self.gap
                         fa[i] = fun(a[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
                 else:
                     while fb[i] > 0:
                         a[i], fa[i] = b[i], fb[i]
-                        b[i] = b[i] + self.mingap
+                        b[i] = b[i] + self.gap
                         fb[i] = fun(b[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
             else:
                 if fa[i] < fb[i]:
                     while fb[i] < 0:
                         a[i], fa[i] = b[i], fb[i]
-                        b[i] = b[i] + self.mingap
+                        b[i] = b[i] + self.gap
                         fb[i] = fun(b[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
                 else:
                     while fa[i] < 0:
                         b[i], fb[i] = a[i], fa[i]
-                        a[i] = a[i] - self.mingap
+                        a[i] = a[i] - self.gap
                         fa[i] = fun(a[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
         return a, b, fa, fb
 
@@ -239,27 +239,19 @@ class DMFT:
             return best_SE - best_mu  # (bz, self.count, size)
 
 
-def op1(nf):
+def op_cb(nf):
     L = int(nf.shape[-1] ** 0.5)
-    nf = nf.view(-1, L, L)
-    op = torch.stack(((nf[:, 0, 0] - nf[:, 0, 1]).abs(), (nf[:, 0, 0] - nf[:, 1, 0]).abs()), dim=0)
-    return torch.min(op, dim=0)[0]
+    line = (-1) ** torch.arange(L, device=nf.device)
+    mask = torch.cat([line * (-1) ** i for i in range(L)])
+    return torch.sum(nf * mask, dim=-1).abs()
 
 
-def op2(nf):
-    _, bz, size = nf.shape
-    L = int(np.sqrt(size))
-    assert L % 2 == 0
-    block = np.tile(np.array([1, -1]), int(L / 2))[np.newaxis, :]  # [[1,-1,1,-1]]
-    check_board_pattern = np.tile(np.concatenate((block, block * (-1)), axis=0), (int(L / 2), 1)).flatten()  # (size)
-    x_board_pattern = np.repeat(block, L, axis=0).flatten()
-    y_board_pattern = np.repeat(block, L)
-    check_op = np.abs(np.sum(nf * check_board_pattern, axis=-1) * 2 / size)
-    x_op = np.abs(np.sum(nf * x_board_pattern, axis=-1) * 2 / size)
-    y_op = np.abs(np.sum(nf * y_board_pattern, axis=-1) * 2 / size)
-    xy_op = np.max(np.stack((x_op, y_op), axis=2), axis=2)
-    return check_op, xy_op  # (bz,2)
-
+def op_str(nf):
+    L = int(nf.shape[-1] ** 0.5)
+    line = torch.ones(L, device=nf.device)
+    mask1 = torch.cat([line * (-1) ** i for i in range(L)])
+    mask2 = ((-1) ** torch.arange(L, device=nf.device)).tile(L)
+    return torch.max(torch.sum(nf * mask1, dim=-1).abs(), torch.sum(nf * mask2, dim=-1).abs())  # (bz,)
 
 
 if __name__ == "__main__":
@@ -298,8 +290,8 @@ if __name__ == "__main__":
     d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
-    mingap = 1.
-    scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, mingap, device)
+    gap = 1.
+    scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
     tp = torch.linspace(0.1, 1.4, 27)#torch.tensor([0.1, 1.4])
@@ -308,7 +300,7 @@ if __name__ == "__main__":
     mu = torch.zeros(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     t = time.time()
-    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(op1, op2), prinfo=True)  # (bz, 1, size)
+    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     exit(0)
 
