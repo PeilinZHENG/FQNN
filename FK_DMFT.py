@@ -130,10 +130,8 @@ class DMFT:
                 break
         return best
 
-    def calc_OP(self, fun, nf, prinfo=False):
-        op = fun(nf.squeeze(1))
-        if prinfo: print('order parameter:\n', torch.round(op, decimals=3))
-        return op
+    def calc_OP(self, fun, nf):
+        return fun(nf.squeeze(1))
 
     @torch.no_grad()
     def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, fixnd=False, reOP=False, reBad=False,
@@ -227,7 +225,7 @@ class DMFT:
                     m = (self.momentum + torch.normal(0., self.momDisor, (1,))).clamp(min=0., max=1.).item()
                 SE = m * SE + (1. - m) * (WeissInv - Gimp.pow(-1))
         # if prinfo: print(torch.round(best_nf, decimals=3))
-        OP = torch.stack([self.calc_OP(fun, best_nf, prinfo) for fun in OPfuns], dim=0)
+        OP = torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
                 return best_SE - best_mu, OP, [idx, min_errors]
@@ -243,7 +241,7 @@ def op_cb(nf):
     L = int(nf.shape[-1] ** 0.5)
     line = (-1) ** torch.arange(L, device=nf.device)
     mask = torch.cat([line * (-1) ** i for i in range(L)])
-    return torch.sum(nf * mask, dim=-1).abs()
+    return 2 * torch.mean(nf * mask, dim=-1).abs()
 
 
 def op_str(nf):
@@ -251,7 +249,7 @@ def op_str(nf):
     line = torch.ones(L, device=nf.device)
     mask1 = torch.cat([line * (-1) ** i for i in range(L)])
     mask2 = ((-1) ** torch.arange(L, device=nf.device)).tile(L)
-    return torch.max(torch.sum(nf * mask1, dim=-1).abs(), torch.sum(nf * mask2, dim=-1).abs())  # (bz,)
+    return 2 * torch.max(torch.mean(nf * mask1, dim=-1).abs(), torch.mean(nf * mask2, dim=-1).abs())  # (bz,)
 
 
 if __name__ == "__main__":
