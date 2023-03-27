@@ -224,7 +224,7 @@ class DMFT:
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
                     m = (self.momentum + torch.normal(0., self.momDisor, (1,))).clamp(min=0., max=1.).item()
                 SE = m * SE + (1. - m) * (WeissInv - Gimp.pow(-1))
-        # if prinfo: print(torch.round(best_nf, decimals=3))
+        if prinfo: print(best_nf.cpu().numpy())
         OP = torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
@@ -254,8 +254,10 @@ def op_str(nf):
 
 if __name__ == "__main__":
     from FK_Data import Ham
+    import numpy as np
     import os, time, warnings
     warnings.filterwarnings('ignore')
+    np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
     threads = 8
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -288,11 +290,11 @@ if __name__ == "__main__":
     d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
-    gap = 2.
+    gap = 5.
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    tp = torch.linspace(0.1, 1.5, 29)#torch.tensor([0.1, 1.4])
+    tp = torch.tensor([0.1, 1.4])
     U = torch.ones(len(tp))
     T = T * torch.ones(len(U))
     mu = torch.zeros(len(U))
@@ -300,7 +302,7 @@ if __name__ == "__main__":
     t = time.time()
     SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
-    print('order parameter:\n', torch.round(OP, decimals=3).cpu().numpy())
+    print('order parameter:\n', OP.cpu().numpy())
     print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
     print('bad index:', Bad[0].cpu().numpy())
     print('bad error:', Bad[1].cpu().numpy())
@@ -308,7 +310,6 @@ if __name__ == "__main__":
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir
-    import numpy as np
     import matplotlib.pyplot as plt
     from torch.nn.functional import softmax, tanh, relu
 
