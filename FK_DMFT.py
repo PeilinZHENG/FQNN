@@ -281,7 +281,7 @@ if __name__ == "__main__":
     count = 20
     iota = 0.
     momentum = 0.5
-    momDisor = 0.1
+    momDisor = 0.01
     maxEpoch = 5000
     milestone = 30
     f_filling = 0.5
@@ -300,6 +300,7 @@ if __name__ == "__main__":
     t = time.time()
     SE, OP = scf(T, H0, U, reOP=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
+    print('order parameter:\n', torch.round(OP, decimals=3).cpu().numpy())
     exit(0)
 
     from FK_rgfnn import Network
