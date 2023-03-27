@@ -283,24 +283,27 @@ if __name__ == "__main__":
     momentum = 0.5
     momDisor = 0.01
     maxEpoch = 5000
-    milestone = 30
+    milestone = 50
     f_filling = 0.5
     d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
-    gap = 1.
+    gap = 2.
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    tp = torch.linspace(0.1, 1.4, 27)#torch.tensor([0.1, 1.4])
+    tp = torch.linspace(0.1, 1.5, 29)#torch.tensor([0.1, 1.4])
     U = torch.ones(len(tp))
     T = T * torch.ones(len(U))
     mu = torch.zeros(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     t = time.time()
-    SE, OP = scf(T, H0, U, reOP=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
+    SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     print('order parameter:\n', torch.round(OP, decimals=3).cpu().numpy())
+    print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
+    print('bad index:', Bad[0].cpu().numpy())
+    print('bad error:', Bad[1].cpu().numpy())
     exit(0)
 
     from FK_rgfnn import Network
