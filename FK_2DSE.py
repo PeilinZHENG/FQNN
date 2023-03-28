@@ -9,6 +9,7 @@ warnings.filterwarnings('ignore')
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
+
 # parameters
 L = 14
 TYPE = 'train'
