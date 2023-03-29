@@ -13,7 +13,7 @@ class DMFT:
         self.momentum = momentum
         self.momDisor = momDisor
         self.MAXEPOCH = maxEpoch
-        self.MILESTONE = maxEpoch if milestone is None or milestone > maxEpoch else milestone
+        self.MILESTONE = maxEpoch - 1 if milestone is None or milestone >= maxEpoch else milestone
         self.f_filling = f_filling
         self.d_filling = d_filling
         self.tol_sc = tol_sc
