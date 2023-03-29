@@ -166,12 +166,12 @@ class DMFT:
         device, dtype = self.iomega0.device, self.iomega0.dtype
         bz, _, _, size = H0.shape
         '''-2. initialize variables'''
-        T = T.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
-        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1)  # (bz, self.count, 1)
-        U = U[:, None, None].to(device=device, dtype=dtype)  # (bz, 1, 1)
-        E_mu = self.init_E_mu(E_mu, bz, device, dtype)   # (bz, 1)
+        T = T.unsqueeze(-1).to(device=device, dtype=dtype)        # (bz, 1)
+        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1)      # (bz, self.count, 1)
+        U = U[:, None, None].to(device=device, dtype=dtype)       # (bz, 1, 1)
+        E_mu = self.init_E_mu(E_mu, bz, device, dtype)            # (bz, 1)
         mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
-        H0 = self.init_H0(H0, bz, size, device, dtype, prinfo)   # (bz, 1, size, size)
+        H0 = self.init_H0(H0, bz, size, device, dtype, prinfo)    # (bz, 1, size, size)
         if model is not None: model.z = iomega
         '''-1. initialize records and parameters'''
         min_error, min_errors = 1e10, None
