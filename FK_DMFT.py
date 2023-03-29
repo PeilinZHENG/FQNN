@@ -309,8 +309,8 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    mu = torch.linspace(-0.8, -0.4, 11)
-    tp = 1.4 * torch.ones(len(mu))
+    mu = torch.linspace(-0.5, 0.1, 31)
+    tp = 0.2 * torch.ones(len(mu))
     U = torch.ones(len(mu))
     T = T * torch.ones(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
