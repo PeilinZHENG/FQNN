@@ -160,7 +160,7 @@ class DMFT:
 
     @torch.no_grad()
     def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, fixnd=False, reOP=False, reBad=False,
-                 OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # E_mu, U: (bz,)
+                 OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # T, U, E_mu: (bz,)
         if fixnd: assert self.d_filling is not None
         '''-3. get parameters'''
         device, dtype = self.iomega0.device, self.iomega0.dtype
