@@ -178,7 +178,7 @@ class DMFT:
         best_SE, best_nf, best_mu = None, None, mu
         cur_tol_sc, avg_tol_sc = self.tol_sc, self.tol_sc / bz ** 0.5
         '''0. initialize self-energy'''
-        SE = self.init_SE(SEinit, bz, size, device, dtype)  # (bz, self.count, size)
+        SE = self.init_SE(SEinit, bz, size, device, dtype)        # (bz, self.count, size)
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             H = H0 + torch.diag_embed(SE)
