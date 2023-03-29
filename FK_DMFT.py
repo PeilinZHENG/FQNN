@@ -22,7 +22,7 @@ class DMFT:
         self.iomega0 = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(0) + 1) * torch.pi  # (1, self.count)
         if double: self.iomega0 = self.iomega0.type(torch.complex128)
 
-    def init_E_mu(self, bz, E_mu, device, dtype):
+    def init_E_mu(self, E_mu, bz, device, dtype):
         if E_mu is None:
             assert self.f_filling is not None
             return torch.zeros((bz, 1), device=device, dtype=dtype)  # (bz, 1)
