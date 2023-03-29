@@ -22,6 +22,31 @@ class DMFT:
         self.iomega0 = 1j * (2 * torch.arange(-count, count, device=device).unsqueeze(0) + 1) * torch.pi  # (1, self.count)
         if double: self.iomega0 = self.iomega0.type(torch.complex128)
 
+    def init_E_mu(self, bz, E_mu, device, dtype):
+        if E_mu is None:
+            assert self.f_filling is not None
+            return torch.zeros((bz, 1), device=device, dtype=dtype)  # (bz, 1)
+        else:
+            return E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
+
+    def init_H0(self, H0, bz, size, device, dtype, prinfo):
+        H0 = H0.to(device=device, dtype=dtype)
+        if self.d_filling is not None:
+            mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
+            mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False), mu, H0, T)
+            if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd0_avg(mu, H0, T)).item()))
+            return H0 - torch.diag_embed(mu.tile(1, 1, size))
+        else:
+            return H0   # (bz, 1, size, size)
+
+    def init_SE(self, SEinit, bz, size, device, dtype):
+        if SEinit is None:
+            # return torch.zeros((bz, self.count, size), device=device).type(dtype)
+            # return 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype)
+            return 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.)
+        else:
+            return SEinit.to(device=device, dtype=dtype)
+
     def calc_Gloc(self, mu, H, iomega, model=None):
         if model is None:
             return torch.linalg.diagonal((torch.diag_embed((iomega + mu).tile(1, 1, H.shape[-1])) - H).inverse())  # (bz, self.count, size)
@@ -137,35 +162,23 @@ class DMFT:
     def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, fixnd=False, reOP=False, reBad=False,
                  OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # E_mu, U: (bz,)
         if fixnd: assert self.d_filling is not None
+        '''-3. get parameters'''
         device, dtype = self.iomega0.device, self.iomega0.dtype
         bz, _, _, size = H0.shape
+        '''-2. initialize variables'''
         T = T.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
         iomega = torch.matmul(T, self.iomega0).unsqueeze(-1)  # (bz, self.count, 1)
         U = U[:, None, None].to(device=device, dtype=dtype)  # (bz, 1, 1)
-        if E_mu is None:
-            assert self.f_filling is not None
-            E_mu = torch.zeros((bz, 1), device=device, dtype=dtype)  # (bz, 1)
-        else:
-            E_mu = E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
+        E_mu = self.init_E_mu(E_mu, bz, device, dtype)   # (bz, 1)
         mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
-        H0 = H0.to(device=device, dtype=dtype)
-        if self.d_filling is not None:
-            mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False), mu, H0, T)
-            if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd0_avg(mu, H0, T)).item()))
-            H0 = H0 - torch.diag_embed(mu.tile(1, 1, size))
-            mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
-        H0 = H0.tile(1, self.count, 1, 1)   # (bz, self.count, size, size)
+        H0 = self.init_H0(H0, bz, size, device, dtype, prinfo)   # (bz, 1, size, size)
         if model is not None: model.z = iomega
-        '''0. initialize self-energy'''
-        if SEinit is None:
-            # SE = torch.zeros((bz, self.count, size), device=device).type(dtype)
-            # SE = 0.01 * torch.randn((bz, self.count, size), device=device).type(dtype)
-            SE = 0.01 * (2. * torch.rand((bz, self.count, size), device=device).type(dtype) - 1.)
-        else:
-            SE = SEinit.to(device=device, dtype=dtype)
+        '''-1. initialize records and parameters'''
         min_error, min_errors = 1e10, None
         best_SE, best_nf, best_mu = None, None, mu
         cur_tol_sc, avg_tol_sc = self.tol_sc, self.tol_sc / bz ** 0.5
+        '''0. initialize self-energy'''
+        SE = self.init_SE(SEinit, bz, size, device, dtype)  # (bz, self.count, size)
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             H = H0 + torch.diag_embed(SE)
