@@ -57,7 +57,7 @@ class DMFT:
         return (T * torch.sum(Gloc * (iomega * self.iota).exp(), dim=1)).real  # (bz, size)
 
     def calc_FDD(self, mu, E, T):
-        return torch.nan_to_num(torch.sigmoid((mu.real - E).squeeze(1) / T.real), nan=0.)  # (bz, size)
+        return torch.nan_to_num(torch.sigmoid((mu - E).squeeze(1) / T), nan=0.)  # (bz, size)
 
     def calc_nd0(self, mu, H0, T):
         E, V = torch.linalg.eigh(H0)   # (bz, 1, size) (bz, 1, size, size)
@@ -163,22 +163,22 @@ class DMFT:
                  OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # T, U, E_mu: (bz,)
         if fixnd: assert self.d_filling is not None
         '''-3. get parameters'''
-        device, dtype = self.iomega0.device, self.iomega0.dtype
+        device, dtype = self.iomega0.device, torch.float64 if self.iomega0.dtype == torch.complex128 else torch.float32
         bz, _, _, size = H0.shape
         '''-2. initialize variables'''
         T = T.unsqueeze(-1).to(device=device, dtype=dtype)        # (bz, 1)
-        iomega = torch.matmul(T, self.iomega0).unsqueeze(-1)      # (bz, self.count, 1)
+        iomega = torch.matmul(T + 1j * 0., self.iomega0).unsqueeze(-1)      # (bz, self.count, 1)
         U = U[:, None, None].to(device=device, dtype=dtype)       # (bz, 1, 1)
         E_mu = self.init_E_mu(E_mu, bz, device, dtype)            # (bz, 1)
         mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
-        H0 = self.init_H0(H0, bz, size, device, dtype, prinfo)    # (bz, 1, size, size)
+        H0 = self.init_H0(H0, bz, size, device, self.iomega0.dtype, prinfo)    # (bz, 1, size, size)
         if model is not None: model.z = iomega
         '''-1. initialize records and parameters'''
         min_error, min_errors = 1e10, None
         best_SE, best_nf, best_mu = None, None, mu
         cur_tol_sc, avg_tol_sc = self.tol_sc, self.tol_sc / bz ** 0.5
         '''0. initialize self-energy'''
-        SE = self.init_SE(SEinit, bz, size, device, dtype)        # (bz, self.count, size)
+        SE = self.init_SE(SEinit, bz, size, device, self.iomega0.dtype)        # (bz, self.count, size)
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             H = H0 + torch.diag_embed(SE)
@@ -207,7 +207,7 @@ class DMFT:
                     if fixnd: best_mu[idx] = mu
                 if reBad:
                     idx = torch.tensor([], dtype=torch.long, device=new_errors.device)
-                    min_errors = torch.tensor([], dtype=new_errors.dtype, device=new_errors.device)
+                    min_errors = torch.tensor([], dtype=dtype, device=new_errors.device)
                 break
             else:
                 m = self.momentum
