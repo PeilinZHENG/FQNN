@@ -29,11 +29,10 @@ class DMFT:
         else:
             return E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
 
-    def init_H0(self, H0, device, dtype, U=None, bz=None, size=None, prinfo=False):
+    def init_H0(self, H0, device, dtype, mu=None, T=None, U=None, size=None, prinfo=False):
         H0 = H0.to(device=device, dtype=dtype)
         if self.d_filling is not None:
-            mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
-            mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False), mu, H0, T)
+            mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False), mu.clone(), H0, T)
             if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd0_avg(mu, H0, T)).item()))
             return H0 - torch.diag_embed((mu + U / 2).tile(1, 1, size))
         else:
@@ -166,19 +165,19 @@ class DMFT:
         device, dtype = self.iomega0.device, torch.float64 if self.iomega0.dtype == torch.complex128 else torch.float32
         bz, _, _, size = H0.shape
         '''-2. initialize variables'''
-        T = T.unsqueeze(-1).to(device=device, dtype=dtype)        # (bz, 1)
-        iomega = torch.matmul(T + 1j * 0., self.iomega0).unsqueeze(-1)      # (bz, self.count, 1)
-        U = U[:, None, None].to(device=device, dtype=dtype)       # (bz, 1, 1)
-        E_mu = self.init_E_mu(E_mu, device, dtype, bz)            # (bz, 1)
-        mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)  # (bz, 1, 1)
-        H0 = self.init_H0(H0, device, self.iomega0.dtype, U, bz, size, prinfo)    # (bz, 1, size, size)
+        T = T.unsqueeze(-1).to(device=device, dtype=dtype)                         # (bz, 1)
+        iomega = torch.matmul(T + 1j * 0., self.iomega0).unsqueeze(-1)             # (bz, self.count, 1)
+        U = U[:, None, None].to(device=device, dtype=dtype)                        # (bz, 1, 1)
+        E_mu = self.init_E_mu(E_mu, device, dtype, bz)                             # (bz, 1)
+        mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)                   # (bz, 1, 1)
+        H0 = self.init_H0(H0, device, self.iomega0.dtype, mu, T, U, size, prinfo)  # (bz, 1, size, size)
         if model is not None: model.z = iomega
         '''-1. initialize records and parameters'''
         min_error, min_errors = 1e10, None
         best_SE, best_nf, best_mu = None, None, mu
         cur_tol_sc, avg_tol_sc = self.tol_sc, self.tol_sc / bz ** 0.5
         '''0. initialize self-energy'''
-        SE = self.init_SE(SEinit, device, self.iomega0.dtype, bz, size)        # (bz, self.count, size)
+        SE = self.init_SE(SEinit, device, self.iomega0.dtype, bz, size)            # (bz, self.count, size)
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             H = H0 + torch.diag_embed(SE)
@@ -275,7 +274,7 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
     threads = 8
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     os.environ['OMP_NUM_THREADS'] = str(threads)
     os.environ['OPENBLAS_NUM_THREADS'] = str(threads)
@@ -302,15 +301,15 @@ if __name__ == "__main__":
     maxEpoch = 2000
     milestone = 50
     f_filling = 0.5
-    d_filling = None
+    d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
     gap = 5.
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    mu = torch.linspace(-0.5, 0.1, 31)
-    tp = 0.2 * torch.ones(len(mu))
+    tp = torch.linspace(0.1, 1.4, 66)
+    mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
     U = torch.ones(len(mu))
     T = T * torch.ones(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
