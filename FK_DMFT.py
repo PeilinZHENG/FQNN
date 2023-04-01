@@ -220,9 +220,8 @@ class DMFT:
                             best_nf[idx[better_idx]] = nf[better_idx]
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
                         idx = idx[bad_idx]
-                    H0, SE, iomega = H0[bad_idx], SE[bad_idx], iomega[bad_idx]
-                    T, U, E_mu = T[bad_idx], U[bad_idx], E_mu[bad_idx]
-                    min_errors, WeissInv, Gimp = min_errors[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
+                    H0, T, U, E_mu, iomega = H0[bad_idx], T[bad_idx], U[bad_idx], E_mu[bad_idx], iomega[bad_idx]
+                    SE, min_errors, WeissInv, Gimp = SE[bad_idx], min_errors[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
                     if model is not None: model.z = iomega
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
@@ -283,7 +282,7 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
     threads = 8
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     os.environ['OMP_NUM_THREADS'] = str(threads)
     os.environ['OPENBLAS_NUM_THREADS'] = str(threads)
@@ -307,10 +306,10 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     momDisor = 0.
-    maxEpoch = 1000
-    milestone = 30
+    maxEpoch = 2000
+    milestone = 50
     f_filling = 0.5
-    d_filling = 0.5
+    d_filling = None
     tol_sc = 1e-6
     tol_bi = 1e-7
     gap = 1.
@@ -323,7 +322,7 @@ if __name__ == "__main__":
     T = T * torch.ones(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     t = time.time()
-    SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_loc, op_cb, op_str), prinfo=True)  # (bz, 1, size)
+    SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     print('order parameter:\n', OP.cpu().numpy())
     print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
