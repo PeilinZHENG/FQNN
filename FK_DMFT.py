@@ -55,7 +55,8 @@ class DMFT:
         else:
             return model(H, selfcons=True)  # (bz, self.count, size)
 
-    def calc_nd(self, Gloc, T, iomega):
+    def calc_nd(self, mu, H, T, iomega, model=None):
+        Gloc = self.calc_Gloc(H - torch.diag_embed(mu.tile(1, 1, H.shape[-1])), iomega, model)
         return (T * torch.sum(Gloc * (iomega * self.iota).exp(), dim=1)).real  # (bz, size)
 
     def calc_FDD(self, mu, E, T):
