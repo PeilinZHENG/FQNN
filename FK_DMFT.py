@@ -29,10 +29,12 @@ class DMFT:
         else:
             return E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
 
-    def init_H0(self, H0, device, dtype, mu=None, T=None, U=None, size=None, prinfo=False):
+    def init_H0(self, H0, device, dtype, T=None, U=None, size=None, muTest=False, prinfo=False):
         H0 = H0.to(device=device, dtype=dtype)
-        if self.d_filling is not None:
-            mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False), mu.clone(), H0, T)
+        if self.d_filling is not None and not muTest:
+            mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False),
+                                   torch.zeros((bz, 1, 1), device=device, dtype=torch.float32
+                                   if dtype == torch.complex64 else torch.float64), H0, T)
             if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd0_avg(mu, H0, T)).item()))
             return H0 - torch.diag_embed((mu + U / 2).tile(1, 1, size))
         else:
@@ -158,32 +160,28 @@ class DMFT:
         return fun(nf.squeeze(1))
 
     @torch.no_grad()
-    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, fixnd=False, reOP=False, reBad=False,
+    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, muTest=False, reOP=False, reBad=False,
                  OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # T, U, E_mu: (bz,)
-        if fixnd: assert self.d_filling is not None
         '''-3. get parameters'''
-        device, dtype = self.iomega0.device, torch.float64 if self.iomega0.dtype == torch.complex128 else torch.float32
+        device, dtype = self.iomega0.device, torch.float32 if self.iomega0.dtype == torch.complex64 else torch.float64
         bz, _, _, size = H0.shape
         '''-2. initialize variables'''
-        T = T.unsqueeze(-1).to(device=device, dtype=dtype)                         # (bz, 1)
-        iomega = torch.matmul(T + 1j * 0., self.iomega0).unsqueeze(-1)             # (bz, self.count, 1)
-        U = U[:, None, None].to(device=device, dtype=dtype)                        # (bz, 1, 1)
-        E_mu = self.init_E_mu(E_mu, device, dtype, bz)                             # (bz, 1)
-        mu = torch.zeros((bz, 1, 1), device=device, dtype=dtype)                   # (bz, 1, 1)
-        H0 = self.init_H0(H0, device, self.iomega0.dtype, mu, T, U, size, prinfo)  # (bz, 1, size, size)
+        T = T.unsqueeze(-1).to(device=device, dtype=dtype)                             # (bz, 1)
+        iomega = torch.matmul(T + 1j * 0., self.iomega0).unsqueeze(-1)                 # (bz, self.count, 1)
+        U = U[:, None, None].to(device=device, dtype=dtype)                            # (bz, 1, 1)
+        E_mu = self.init_E_mu(E_mu, device, dtype, bz)                                 # (bz, 1)
+        H0 = self.init_H0(H0, device, self.iomega0.dtype, T, U, size, muTest, prinfo)  # (bz, 1, size, size)
         if model is not None: model.z = iomega
         '''-1. initialize records and parameters'''
         min_error, min_errors = 1e10, None
-        best_SE, best_nf, best_mu = None, None, mu
+        best_SE, best_nf = None, None
         cur_tol_sc, avg_tol_sc = self.tol_sc, self.tol_sc / bz ** 0.5
         '''0. initialize self-energy'''
-        SE = self.init_SE(SEinit, device, self.iomega0.dtype, bz, size)            # (bz, self.count, size)
+        SE = self.init_SE(SEinit, device, self.iomega0.dtype, bz, size)                # (bz, self.count, size)
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             H = H0 + torch.diag_embed(SE)
-            if fixnd: mu = self.bisearch_dec(partial(self.fix_filling, model=model, f_ele=False), mu, H, T, iomega)
             Gloc = self.calc_Gloc(mu, H, iomega, model)
-            if fixnd and prinfo: print('{} loop <nd>: {:.3f}'.format(l, self.calc_nd(Gloc, T, iomega).mean().item()))
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
@@ -200,10 +198,8 @@ class DMFT:
                 if prinfo: print("final error: {:.5e}".format(tot_error))
                 if l <= self.MILESTONE:
                     best_SE, best_nf = SE, nf
-                    if fixnd: best_mu = mu
                 else:
                     best_SE[idx], best_nf[idx] = SE, nf
-                    if fixnd: best_mu[idx] = mu
                 if reBad:
                     idx = torch.tensor([], dtype=torch.long, device=new_errors.device)
                     min_errors = torch.tensor([], dtype=dtype, device=new_errors.device)
@@ -214,7 +210,6 @@ class DMFT:
                 if l <= self.MILESTONE and tot_error < min_error:
                     min_error, min_errors = tot_error, new_errors
                     best_SE, best_nf = SE, nf
-                    if fixnd: best_mu = mu
                 if l >= self.MILESTONE:
                     if l == self.MILESTONE:
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
@@ -225,7 +220,6 @@ class DMFT:
                             min_errors[better_idx] = new_errors[better_idx]
                             best_SE[idx[better_idx]] = SE[better_idx]
                             best_nf[idx[better_idx]] = nf[better_idx]
-                            if fixnd: best_mu[idx[better_idx]] = mu[better_idx]
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
                         idx = idx[bad_idx]
                     H0, SE, iomega = H0[bad_idx], SE[bad_idx], iomega[bad_idx]
@@ -242,13 +236,13 @@ class DMFT:
         OP = torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0)
         if reOP:
             if reBad:
-                return best_SE - best_mu, OP, [idx, min_errors]
+                return best_SE, OP, [idx, min_errors]
             else:
-                return best_SE - best_mu, OP
+                return best_SE, OP
         elif reBad:
-            return best_SE - best_mu, [idx, min_errors]
+            return best_SE, [idx, min_errors]
         else:
-            return best_SE - best_mu  # (bz, self.count, size)
+            return best_SE  # (bz, self.count, size)
 
 
 def op_cb(nf):
