@@ -32,8 +32,7 @@ class DMFT:
 
     def init_H0(self, H0, device, dtype, adjMu, T=None, U=None, bz=None, size=None, prinfo=False):
         H0 = H0.to(device=device, dtype=dtype)
-        if adjMu:
-            assert self.d_filling is not None
+        if adjMu and self.d_filling is not None:
             mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False),
                                    torch.zeros((bz, 1, 1), device=device, dtype=torch.float32
                                    if dtype == torch.complex64 else torch.float64), H0, T)
@@ -161,7 +160,7 @@ class DMFT:
         return fun(nf.squeeze(1))
 
     @torch.no_grad()
-    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, adjMu=False, reOP=False, reBad=False,
+    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, adjMu=True, reOP=False, reBad=False,
                  OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # T, U, E_mu: (bz,)
         '''-3. get parameters'''
         device, dtype = self.iomega0.device, torch.float32 if self.iomega0.dtype == torch.complex64 else torch.float64
