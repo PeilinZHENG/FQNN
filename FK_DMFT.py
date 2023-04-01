@@ -310,7 +310,7 @@ if __name__ == "__main__":
     maxEpoch = 2000
     milestone = 50
     f_filling = 0.5
-    d_filling = None
+    d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
     gap = 1.
