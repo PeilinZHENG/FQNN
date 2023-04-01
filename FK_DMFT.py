@@ -1,6 +1,7 @@
 import torch
 from typing import Union
 from functools import partial
+from Data_Ins import l2c
 
 
 class DMFT:
@@ -29,7 +30,7 @@ class DMFT:
         else:
             return E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
 
-    def init_H0(self, H0, device, dtype, T=None, U=None, size=None, muTest=False, prinfo=False):
+    def init_H0(self, H0, device, dtype, T=None, U=None, bz=None, size=None, muTest=False, prinfo=False):
         H0 = H0.to(device=device, dtype=dtype)
         if self.d_filling is not None and not muTest:
             mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False),
@@ -166,18 +167,18 @@ class DMFT:
         device, dtype = self.iomega0.device, torch.float32 if self.iomega0.dtype == torch.complex64 else torch.float64
         bz, _, _, size = H0.shape
         '''-2. initialize variables'''
-        T = T.unsqueeze(-1).to(device=device, dtype=dtype)                             # (bz, 1)
-        iomega = torch.matmul(T + 1j * 0., self.iomega0).unsqueeze(-1)                 # (bz, self.count, 1)
-        U = U[:, None, None].to(device=device, dtype=dtype)                            # (bz, 1, 1)
-        E_mu = self.init_E_mu(E_mu, device, dtype, bz)                                 # (bz, 1)
-        H0 = self.init_H0(H0, device, self.iomega0.dtype, T, U, size, muTest, prinfo)  # (bz, 1, size, size)
+        T = T.unsqueeze(-1).to(device=device, dtype=dtype)                                 # (bz, 1)
+        iomega = torch.matmul(T + 1j * 0., self.iomega0).unsqueeze(-1)                     # (bz, self.count, 1)
+        U = U[:, None, None].to(device=device, dtype=dtype)                                # (bz, 1, 1)
+        E_mu = self.init_E_mu(E_mu, device, dtype, bz)                                     # (bz, 1)
+        H0 = self.init_H0(H0, device, self.iomega0.dtype, T, U, bz, size, muTest, prinfo)  # (bz, 1, size, size)
         if model is not None: model.z = iomega
         '''-1. initialize records and parameters'''
         min_error, min_errors = 1e10, None
         best_SE, best_nf = None, None
         cur_tol_sc, avg_tol_sc = self.tol_sc, self.tol_sc / bz ** 0.5
         '''0. initialize self-energy'''
-        SE = self.init_SE(SEinit, device, self.iomega0.dtype, bz, size)                # (bz, self.count, size)
+        SE = self.init_SE(SEinit, device, self.iomega0.dtype, bz, size)                    # (bz, self.count, size)
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             H = H0 + torch.diag_embed(SE)
@@ -245,6 +246,23 @@ class DMFT:
             return best_SE  # (bz, self.count, size)
 
 
+def op_loc(nf):
+    nf = nf * 2 - 1
+    bz, size = nf.shape
+    L = int(size ** (1 / 2))
+    dtype, device = nf.dtype, nf.device
+    correlation = torch.zeros(bz, dtype=dtype, device=device)
+    for rx in range(L):
+        for ry in range(L):
+            n = l2c(rx, ry, L)
+            for delta_x in [-1, 0, 1]:
+                for delta_y in [-1, 0, 1]:
+                    if delta_x == 0 and delta_y == 0: continue
+                    n_delta = l2c(rx + delta_x, ry + delta_y, L)
+                    correlation += nf[:, n] * nf[:, n_delta] * (-1) ** (delta_x + delta_y)
+    return correlation / (size * 8)
+
+
 def op_cb(nf):
     L = int(nf.shape[-1] ** 0.5)
     line = (-1) ** torch.arange(L, device=nf.device)
@@ -292,7 +310,7 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     momDisor = 0.
-    maxEpoch = 2000
+    maxEpoch = 1000
     milestone = 50
     f_filling = 0.5
     d_filling = 0.5
@@ -308,7 +326,7 @@ if __name__ == "__main__":
     T = T * torch.ones(len(U))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     t = time.time()
-    SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
+    SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_loc, op_cb, op_str), prinfo=True)  # (bz, 1, size)
     print(time.time() - t)
     print('order parameter:\n', OP.cpu().numpy())
     print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
