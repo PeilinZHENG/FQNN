@@ -49,11 +49,11 @@ class DMFT:
         else:
             return SEinit.to(device=device, dtype=dtype)
 
-    def calc_Gloc(self, mu, H, iomega, model=None):
+    def calc_Gloc(self, H, iomega, model=None):
         if model is None:
-            return torch.linalg.diagonal((torch.diag_embed((iomega + mu).tile(1, 1, H.shape[-1])) - H).inverse())  # (bz, self.count, size)
+            return torch.linalg.diagonal((torch.diag_embed(iomega.tile(1, 1, H.shape[-1])) - H).inverse())  # (bz, self.count, size)
         else:
-            return model(H - torch.diag_embed(mu.tile(1, 1, H.shape[-1])), selfcons=True)  # (bz, self.count, size)
+            return model(H, selfcons=True)  # (bz, self.count, size)
 
     def calc_nd(self, Gloc, T, iomega):
         return (T * torch.sum(Gloc * (iomega * self.iota).exp(), dim=1)).real  # (bz, size)
@@ -73,13 +73,11 @@ class DMFT:
         z = torch.sum((1 - UoverWI).log() * (iomega * self.iota).exp(), dim=1) - E_mu / T # (bz, size)
         return torch.nan_to_num(torch.sigmoid(z).real, nan=0.)  # (bz, size)
 
-    def fix_filling(self, a, args, T, iomega=None, model=None, f_ele=True):
+    def fix_filling(self, a, args, T, iomega=None, f_ele=True):
         if f_ele:
             return self.calc_nf(a, args, T, iomega).mean(dim=-1) - self.f_filling   # (bz,)
-        elif iomega is None:
-            return self.calc_nd0_avg(a, args, T) - self.d_filling # (bz,)
         else:
-            return self.calc_nd(self.calc_Gloc(a, args, iomega, model), T, iomega).mean(dim=-1) - self.d_filling # (bz,)
+            return self.calc_nd0_avg(a, args, T) - self.d_filling # (bz,)
 
     def detr_intvl(self, fun, a, args, T, iomega):
         fa = fun(a, args, T, iomega)
@@ -181,8 +179,7 @@ class DMFT:
         SE = self.init_SE(SEinit, device, self.iomega0.dtype, bz, size)                    # (bz, self.count, size)
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
-            H = H0 + torch.diag_embed(SE)
-            Gloc = self.calc_Gloc(mu, H, iomega, model)
+            Gloc = self.calc_Gloc(H0 + torch.diag_embed(SE), iomega, model)
             '''2. compute Weiss field \mathcal{G}_0'''
             WeissInv = Gloc.pow(-1) + SE  # (bz, self.count, size)
             '''3. compute G_{imp}'''
@@ -224,7 +221,7 @@ class DMFT:
                         bad_idx = torch.nonzero(min_errors >= avg_tol_sc, as_tuple=True)[0]
                         idx = idx[bad_idx]
                     H0, SE, iomega = H0[bad_idx], SE[bad_idx], iomega[bad_idx]
-                    T, U, mu, E_mu = T[bad_idx], U[bad_idx], mu[bad_idx], E_mu[bad_idx]
+                    T, U, E_mu = T[bad_idx], U[bad_idx], E_mu[bad_idx]
                     min_errors, WeissInv, Gimp = min_errors[bad_idx], WeissInv[bad_idx], Gimp[bad_idx]
                     if model is not None: model.z = iomega
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
@@ -311,12 +308,12 @@ if __name__ == "__main__":
     momentum = 0.5
     momDisor = 0.
     maxEpoch = 1000
-    milestone = 50
+    milestone = 30
     f_filling = 0.5
     d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
-    gap = 5.
+    gap = 1.
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
