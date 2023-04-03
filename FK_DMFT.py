@@ -231,8 +231,8 @@ class DMFT:
         if prinfo:
             for i, op in enumerate(best_nf.cpu().numpy()):
                 print(i, '\n', op)
-        OP = torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0)
         if reOP:
+            OP = torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0)
             if reBad:
                 return best_SE, OP, [idx, min_errors]
             else:
