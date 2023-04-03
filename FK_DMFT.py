@@ -160,7 +160,7 @@ class DMFT:
         return fun(nf.squeeze(1))
 
     @torch.no_grad()
-    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, adjMu=True, reOP=False, reBad=False,
+    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, adjMu=True, reOP=False, reNf=False, reBad=False,
                  OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # T, U, E_mu: (bz,)
         '''-3. get parameters'''
         device, dtype = self.iomega0.device, torch.float32 if self.iomega0.dtype == torch.complex64 else torch.float64
@@ -231,16 +231,10 @@ class DMFT:
         if prinfo:
             for i, op in enumerate(best_nf.cpu().numpy()):
                 print(i, '\n', op)
-        if reOP:
-            OP = torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0)
-            if reBad:
-                return best_SE, OP, [idx, min_errors]
-            else:
-                return best_SE, OP
-        elif reBad:
-            return best_SE, [idx, min_errors]
-        else:
-            return best_SE  # (bz, self.count, size)
+        res = [best_SE, torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0) if reOP else None,
+               best_nf if reNf else None, [idx, min_errors] if reBad else None]
+        res = [x for x in res if x is not None]
+        return res if len(res) > 1 else res[0]
 
 
 def op_loc(nf):

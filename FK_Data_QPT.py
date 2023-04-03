@@ -1,42 +1,24 @@
-from FK_DMFT import *
-import time
+from FK_DMFT import DMFT, op_loc
+from FK_Data import Ham
+import time, os
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.multiprocessing as mp
 from functools import partial
 from utils import mymkdir, myceil
-from Data_Ins import l2c
-import mkl, warnings
+import warnings
 
 warnings.filterwarnings('ignore')
-mkl.set_num_threads(1)
-
-
-def Ham(L, mu, t2=0.):
-    H = torch.diag_embed(-mu * torch.ones(L ** 2)).type(torch.complex128)
-    for x in range(L):
-        for y in range(L):
-            n = l2c(x, y, L)
-            # nearest neighbor
-            nx = l2c(x + 1, y, L)
-            ny = l2c(x, y + 1, L)
-            H[nx, n] = H[nx, n] + 1.
-            H[n, nx] = H[n, nx] + 1.
-            H[ny, n] = H[ny, n] + 1.
-            H[n, ny] = H[n, ny] + 1.
-            # next nearest neighbor
-            n1 = l2c(x + 1, y + 1, L)
-            n2 = l2c(x + 1, y - 1, L)
-            H[n1, n] = H[n1, n] + t2
-            H[n, n1] = H[n, n1] + t2
-            H[n2, n] = H[n2, n] + t2
-            H[n, n2] = H[n, n2] + t2
-    return H
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['VECLIB_MAXIMUM_THREADS'] = '1'
+os.environ['NUMEXPR_NUM_THREADS'] = '1'
+torch.set_num_threads(1)
 
 
 def genData(L, t2, mu_devi, DMFT_data=False, phase_set=1):
-    t = time.time()
     torch.manual_seed(0)
     '''construct DMFT'''
     count = 20
@@ -57,23 +39,23 @@ def genData(L, t2, mu_devi, DMFT_data=False, phase_set=1):
     '''gen Ham data'''
     # t2 = torch.arange(0, 0.1, 0.05, device=device)
     t2_amount = t2.shape[0]
-    T = T_float * torch.ones(t2_amount, device=device, dtype=dtype).unsqueeze(-1)  # (bz,1)
+    T = T_float * torch.ones(t2_amount, device=device, dtype=dtype).unsqueeze(-1)  # (bz, 1)
     mu0 = torch.zeros((t2_amount, 1, 1), device=device, dtype=dtype)  # (t2_amount, 1, 1)
     H0 = torch.stack([Ham(L, mu=0., t2=i.item()) for i in t2], dim=0).unsqueeze(1).to(device)  # (t2_amount,1,size,size)
-    mu = scf.bisearch_dec(partial(scf.fix_filling, f_ele=False), mu0, H0, T)  # (t2_amount,1,1)
+    mu = scf.bisearch_dec(partial(scf.fix_filling, f_ele=False), mu0, H0, T)  # (t2_amount, 1, 1)
     # mu_devi = torch.arange(-0.1, 0.5, 0.05, device=device)
 
     H0_samples = []
     mu_samples = []
     for i in range(t2_amount):
-        mu_sample = mu[i, :, :] + mu_devi.unsqueeze(-1).unsqueeze(-1)  # (mu_devi_amount,1,1)
+        mu_sample = mu[i, :, :] + mu_devi.unsqueeze(-1).unsqueeze(-1)  # (mu_devi_amount, 1, 1)
         H0_sample = H0[i, :, :, :] - torch.diag_embed(
-            mu_sample * torch.ones(L ** 2, device=device, dtype=dtype))  # (mu_devi_amount,1,size,size)
+            mu_sample * torch.ones(L ** 2, device=device, dtype=dtype))  # (mu_devi_amount, 1, size, size)
         mu_samples.append(mu_sample)
         H0_samples.append(H0_sample)
     bz = mu_devi.shape[0] * t2_amount  # bz = mu_devi_amount * t2_amount
-    mu_samples = torch.concatenate(mu_samples, dim=0).squeeze()  # (bz)
-    H0_samples = torch.concatenate(H0_samples, dim=0)  # (bz,1,size,size)
+    mu_samples = torch.cat(mu_samples, dim=0).squeeze()  # (bz)
+    H0_samples = torch.cat(H0_samples, dim=0)  # (bz, 1, size, size)
     t2_samples = torch.repeat_interleave(t2, mu_devi.shape[0])  # (bz)
     T_samples = T_float * torch.ones(bz, device=device, dtype=dtype)  # (bz)
     U_samples = torch.ones(bz, device=device, dtype=dtype)  # (bz)
@@ -84,7 +66,6 @@ def genData(L, t2, mu_devi, DMFT_data=False, phase_set=1):
         return H0_samples, labels
     else:
         '''gen DMFT data'''
-        t = time.time()
         train_batchsize = 100
         OPs = []
         nfs = []
@@ -94,10 +75,11 @@ def genData(L, t2, mu_devi, DMFT_data=False, phase_set=1):
             H0_batch = H0_samples[i * train_batchsize:(i + 1) * train_batchsize].to(device)
             T_batch = T_samples[i * train_batchsize:(i + 1) * train_batchsize].to(device)
             U_batch = U_samples[i * train_batchsize:(i + 1) * train_batchsize].to(device)
-            SE_batch, OP_batch, nf_batch, bad_idx_batch, bad_error_batch = scf(T_batch, H0_batch, U_batch, reOP=True,
+            SE_batch, OP_batch, nf_batch, bad = scf(T_batch, H0_batch, U_batch, reOP=True,
                                                                                reBad=True,
                                                                                OPfuns=(op_loc,),
                                                                                prinfo=True)  # (bz, 1, size)
+            bad_idx_batch, bad_error_batch = bad
             OPs.append(OP_batch)
             nfs.append(nf_batch)
             bad_idxs.append(bad_idx_batch + i * train_batchsize)
@@ -129,36 +111,48 @@ def genData(L, t2, mu_devi, DMFT_data=False, phase_set=1):
 
 def main(L, t2_amount, mu_amount):
     '生成不含DMFT的data'
-    t2 = torch.linspace(0, 0.35, t2_amount, device=device)
-    mu_devi = torch.linspace(-0.1, 0.5, mu_amount, device=device)
-    H1s, label1s = genData(L, t2, mu_devi, DMFT_data=False, phase_set=1)  # label=1,checkboard
-    t2 = torch.linspace(0.8, 1.2, t2_amount, device=device)
-    H2s, label2s = genData(L, t2, mu_devi, DMFT_data=False, phase_set=0)  # label=0,stripe
-    Hs = torch.cat((H1s, H2s))
-    labels = torch.cat((label1s, label2s))
-    return Hs, labels
+    t2 = torch.linspace(0, 0.35, t2_amount)
+    mu_devi = torch.linspace(-0.1, 0.5, mu_amount)
+    Hs, labels = genData(L, t2, mu_devi, DMFT_data=False, phase_set=0)  # label=0, checkboard
+    indices = torch.randperm(len(labels))
+    H0_test, l0_test = Hs[indices[:int(len(labels) / 10)]], labels[indices[:int(len(labels) / 10)]]
+    H0_train, l0_train = Hs[indices[int(len(labels) / 10):]], labels[indices[int(len(labels) / 10):]]
+    t2 = torch.linspace(0.8, 1.2, t2_amount)
+    Hs, labels = genData(L, t2, mu_devi, DMFT_data=False, phase_set=1)  # label=1, stripe
+    indices = torch.randperm(len(labels))
+    H1_test, l1_test = Hs[indices[:int(len(labels) / 10)]], labels[indices[:int(len(labels) / 10)]]
+    H1_train, l1_train = Hs[indices[int(len(labels) / 10):]], labels[indices[int(len(labels) / 10):]]
+    H_train = torch.cat((H0_train, H1_train), dim=0)
+    H_test = torch.cat((H0_test, H1_test), dim=0)
+    l_train = torch.cat((l0_train, l1_train), dim=0)
+    l_test = torch.cat((l0_test, l1_test), dim=0)
+    return H_train, l_train, H_test, l_test
 
 
 if __name__ == '__main__':
     device = torch.device("cpu")
     L = 12
-    TYPE = 'test'
-    t2_amount, mu_amount = 100, 5  # total_amount = t2_amount * mu_amount * 2
+    t2_amount, mu_amount = 1100, 5  # total_amount = t2_amount * mu_amount * 2
 
-    path = 'datasets/FK_{}'.format(L)
+    path = 'datasets/FK_{}_QPT'.format(L)
     mymkdir(path)
-    path = '{}/{}'.format(path, TYPE)
-    mymkdir(path)
+    mymkdir('{}/train'.format(path))
+    mymkdir('{}/test'.format(path))
 
     t = time.time()
-    Hs, labels = main(L, t2_amount, mu_amount)
+    H_train, l_train, H_test, l_test = main(L, t2_amount, mu_amount)
 
     delta_t = time.time() - t
-    print(delta_t, '\n', L, Hs.shape, labels.shape)
-    f = open('{}/info.txt'.format(path), 'w')
-    f.write('time={}\nL={}\ndataset.shape={}\nlabels.shape={}'.format(delta_t, L, Hs.shape, labels.shape))
+    print(delta_t, '\n', L, H_train.shape, l_train.shape, H_test.shape, l_test.shape)
+    f = open('{}/train/info.txt'.format(path), 'w')
+    f.write('time={}\nL={}\ndataset.shape={}\nlabels.shape={}'.format(delta_t, L, H_train.shape, l_train.shape))
+    f.close()
+    f = open('{}/test/info.txt'.format(path), 'w')
+    f.write('time={}\nL={}\ndataset.shape={}\nlabels.shape={}'.format(delta_t, L, H_test.shape, l_test.shape))
     f.close()
 
     # save
-    torch.save(Hs, '{}/dataset.pt'.format(path))  # (amount * processors, 1, L ** 2, L ** 2)
-    torch.save(labels, '{}/labels.pt'.format(path))  # (amount * processors, 2)
+    torch.save(H_train, '{}/train/dataset.pt'.format(path))  # (bz, 1, L ** 2, L ** 2)
+    torch.save(l_train, '{}/train/labels.pt'.format(path))   # (bz, 3)
+    torch.save(H_test, '{}/test/dataset.pt'.format(path))    # (bz, 1, L ** 2, L ** 2)
+    torch.save(l_test, '{}/test/labels.pt'.format(path))     # (bz, 3)
