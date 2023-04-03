@@ -55,6 +55,12 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
         return data, index
 
 if __name__ == "__main__":
+    data = torch.load('datasets/FK_12_QPT/train/dataset.pt')
+    labels = torch.load('datasets/FK_12_QPT/train/labels.pt')
+    torch.save(data.cpu(), 'datasets/FK_12_QPT/train/dataset.pt')
+    torch.save(labels.cpu(), 'datasets/FK_12_QPT/train/dataset.pt')
+
+    exit(0)
     a = torch.rand(50, device='cuda') * 2 - 1
     good_idx = torch.nonzero(a > 0, as_tuple=True)[0]
     t = time.time()
