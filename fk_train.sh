@@ -1,12 +1,12 @@
 ## Parameters of GPU
-gpu=3
+gpu=5
 threads=8
 
 # Parameters of DMFT
 count=20
 iota=0
 momentum=0.5
-momDisor=0.1
+momDisor=0
 maxEpoch=200
 milestone=30
 f_filling=0.5
@@ -16,9 +16,9 @@ tol_bi=1e-7
 gap=1
 
 # Parameters of training
-L=14
-data=FK_${L}
-Net=Naive_2d_0
+L=12
+data=FK_${L}_QPT
+Net=Naive_0
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
@@ -44,11 +44,11 @@ ss=20
 drop=0
 disor=0
 
-epochs=101
+epochs=10
 workers=8
 batchsize=128
 print_freq=7
-save_freq=10
+save_freq=1
 seed=0
 
 
@@ -72,5 +72,5 @@ python FK_Train.py \
   --loss $loss --opt $opt --lr $lr --wd $wd --betas $betas --sch $sch --gamma $gamma --ss $ss --drop $drop \
   --data $data --Net $Net --entanglement $entanglement --delta $delta --tc $tc --gradsnorm $gradsnorm \
   --input_size $input_size --embedding_size $embedding_size --hidden_size $hidden_size --output_size $output_size \
-  --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale --SC2D
+  --init_bound $bound --restr $restr --hermi $hermi --diago $diago --double --scale
 
