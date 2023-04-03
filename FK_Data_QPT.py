@@ -41,29 +41,28 @@ def genData(L, t2, mu_devi, DMFT_data=False, phase_set=1):
     t2_amount = t2.shape[0]
     T = T_float * torch.ones(t2_amount, device=device, dtype=dtype).unsqueeze(-1)  # (bz, 1)
     mu0 = torch.zeros((t2_amount, 1, 1), device=device, dtype=dtype)  # (t2_amount, 1, 1)
-    H0 = torch.stack([Ham(L, mu=0., t2=i.item()) for i in t2], dim=0).unsqueeze(1).to(device)  # (t2_amount,1,size,size)
+    H0 = torch.stack([Ham(L, mu=0., tp=i.item()) for i in t2], dim=0).unsqueeze(1).to(device)  # (t2_amount, 1, size, size)
     mu = scf.bisearch_dec(partial(scf.fix_filling, f_ele=False), mu0, H0, T)  # (t2_amount, 1, 1)
     # mu_devi = torch.arange(-0.1, 0.5, 0.05, device=device)
 
     H0_samples = []
     mu_samples = []
     for i in range(t2_amount):
-        mu_sample = mu[i, :, :] + mu_devi.unsqueeze(-1).unsqueeze(-1)  # (mu_devi_amount, 1, 1)
-        H0_sample = H0[i, :, :, :] - torch.diag_embed(
-            mu_sample * torch.ones(L ** 2, device=device, dtype=dtype))  # (mu_devi_amount, 1, size, size)
+        mu_sample = mu[i] + mu_devi[:, None, None].to(device=device, dtype=dtype)  # (mu_devi_amount, 1, 1)
+        H0_sample = H0[i] - torch.diag_embed(mu_sample.tile(1, 1, L ** 2))  # (mu_devi_amount, 1, size, size)
         mu_samples.append(mu_sample)
         H0_samples.append(H0_sample)
     bz = mu_devi.shape[0] * t2_amount  # bz = mu_devi_amount * t2_amount
-    mu_samples = torch.cat(mu_samples, dim=0).squeeze()  # (bz)
     H0_samples = torch.cat(H0_samples, dim=0)  # (bz, 1, size, size)
-    t2_samples = torch.repeat_interleave(t2, mu_devi.shape[0])  # (bz)
-    T_samples = T_float * torch.ones(bz, device=device, dtype=dtype)  # (bz)
-    U_samples = torch.ones(bz, device=device, dtype=dtype)  # (bz)
+    T_samples = T_float * torch.ones(bz, device=device, dtype=dtype)  # (bz,)
+    U_samples = torch.ones(bz, device=device, dtype=dtype)  # (bz,)
+    # mu_samples = torch.cat(mu_samples, dim=0).squeeze()  # (bz,)
+    # t2_samples = torch.repeat_interleave(t2, mu_devi.shape[0])  # (bz,)
 
     if not DMFT_data:
         phase_labels = phase_set * torch.ones_like(T_samples)
-        labels = torch.stack((U_samples, T_samples, phase_labels), dim=-1)  # (bz,3)
-        return H0_samples, labels
+        labels = torch.stack((U_samples, T_samples, phase_labels), dim=-1)  # (bz, 3)
+        return H0_samples.cpu(), labels.cpu()
     else:
         '''gen DMFT data'''
         train_batchsize = 100
@@ -75,11 +74,9 @@ def genData(L, t2, mu_devi, DMFT_data=False, phase_set=1):
             H0_batch = H0_samples[i * train_batchsize:(i + 1) * train_batchsize].to(device)
             T_batch = T_samples[i * train_batchsize:(i + 1) * train_batchsize].to(device)
             U_batch = U_samples[i * train_batchsize:(i + 1) * train_batchsize].to(device)
-            SE_batch, OP_batch, nf_batch, bad = scf(T_batch, H0_batch, U_batch, reOP=True,
-                                                                               reBad=True,
-                                                                               OPfuns=(op_loc,),
-                                                                               prinfo=True)  # (bz, 1, size)
-            bad_idx_batch, bad_error_batch = bad
+            SE_batch, OP_batch, nf_batch, bad_batch = scf(T_batch, H0_batch, U_batch, adjMu=False, reOP=True, reNf=True,
+                                                          reBad=True, OPfuns=(op_loc,), prinfo=True)  # (bz, 1, size)
+            bad_idx_batch, bad_error_batch = bad_batch
             OPs.append(OP_batch)
             nfs.append(nf_batch)
             bad_idxs.append(bad_idx_batch + i * train_batchsize)
