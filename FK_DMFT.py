@@ -290,8 +290,8 @@ if __name__ == "__main__":
     torch.manual_seed(0)
 
     L = 12  # size = L ** 2
-    data = 'FK_{}'.format(L)
-    Net = 'Naive_2d_0'
+    data = f'FK_{L}_QPT'
+    Net = 'Naive_sf_0'
     T = 0.005
     save = True
     show = True
@@ -311,24 +311,27 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    tp = torch.linspace(0.1, 1.4, 66)
-    mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
-    U = torch.ones(len(mu))
-    T = T * torch.ones(len(U))
-    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
-    t = time.time()
-    SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
-    print(time.time() - t)
-    print('order parameter:\n', OP.cpu().numpy())
-    print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
-    print('bad index:', Bad[0].cpu().numpy())
-    print('bad error:', Bad[1].cpu().numpy())
-    exit(0)
+    # tp = torch.linspace(0.1, 1.4, 66)
+    # mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
+    # U = torch.ones(len(mu))
+    # T = T * torch.ones(len(U))
+    # H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    # t = time.time()
+    # SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
+    # print(time.time() - t)
+    # print('order parameter:\n', OP.cpu().numpy())
+    # print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
+    # print('bad index:', Bad[0].cpu().numpy())
+    # print('bad error:', Bad[1].cpu().numpy())
+    # exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir
     import matplotlib.pyplot as plt
     from torch.nn.functional import softmax, tanh, relu
+    if save:
+        path = 'results/{}'.format(data)
+        mymkdir(path)
 
     '''construct FQNN'''
     model_path = 'models/{}/{}'.format(data, Net)
@@ -339,11 +342,14 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
-    U = torch.linspace(1., 4., 150)
-    mu = U / 2.
-    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
-    PTPs = {'0.020':(0.33, 0.392), '0.100': (1.5, 1.76), '0.110': (1.7, 2.01), '0.120': (1.8, 2.28),
-            '0.130': (2.0, 2.6), '0.140': (2.2, 3.03), '0.150': (2.4, 3.99)}
+    tp = torch.linspace(0., 1.2, 61)
+    U = torch.ones(len(tp))
+    mu = torch.zeros(len(tp))
+    # U = torch.linspace(1., 4., 150)
+    # mu = U / 2.
+    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    PTPs = {'0.005':(0.6, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.5, 1.76), '0.110': (1.7, 2.01),
+            '0.120': (1.8, 2.28), '0.130': (2.0, 2.6), '0.140': (2.2, 3.03), '0.150': (2.4, 3.99)}
     try:
         PTP, QMCPTP = PTPs[f'{T:.3f}']
     except KeyError:
@@ -370,12 +376,14 @@ if __name__ == "__main__":
             if type(SEs) is torch.Tensor:
                 SE = SEs[i * bz:(i + 1) * bz].to(device)
             else:
-                SE, op = scf(T_batch, H0_batch, U_batch, model=None, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
+                SE, op = scf(T_batch, H0_batch, U_batch, model=None, reOP=True, OPfuns=(op_cb, op_str),
+                             prinfo=True if i == 0 else False)  # (bz, scf.count, size)
                 SEs.append(SE.cpu())
-                OP.append(op.cpu().squeeze(0))
+                OP.append(op.cpu())
         else:
-            SE, op = scf(T_batch, H0_batch, U_batch, model=model, reOP=True, prinfo=True if i == 0 else False)  # (bz, scf.count, size)
-            OP.append(op.cpu().squeeze(0))
+            SE, op = scf(T_batch, H0_batch, U_batch, model=model, reOP=True, OPfuns=(op_cb, op_str),
+                         prinfo=True if i == 0 else False)  # (bz, scf.count, size)
+            OP.append(op.cpu())
         if Net.startswith('C') or 'sf' in Net:
             SE = SE[:, count:count + 1]   # (bz, 1, size)
             if '2d' in Net or model.z.size(0) != T_batch.shape[0]:
@@ -393,7 +401,7 @@ if __name__ == "__main__":
         else:
             P.append(softmax(LDOS, dim=1)[:, 1].data.cpu())
     P = torch.cat(P, dim=0).numpy()
-    if type(OP) is list: OP = torch.cat(OP, dim=0)
+    if type(OP) is list: OP = torch.cat(OP, dim=1)
     if '2d' in Net and type(SEs) is list:
         torch.save(torch.cat(SEs, dim=0), f'results/{data}/SE+OP/SE_{T[0].item():.3f}.pt')
         torch.save(OP, f'results/{data}/SE+OP/OP_{T[0].item():.3f}.pt')
@@ -418,11 +426,11 @@ if __name__ == "__main__":
     ax2.set_ylabel('OP', c='b')
     ax2.set_ylim([0., 1.])
     ax2.set_yticks(0.1 * np.arange(11))
-    ax2.scatter(U, OP, s=10, c='b', marker='^')
+    for i, op in enumerate(OP):
+        ax2.scatter(U, op, s=10, marker='^', label=f'{i}')
+    if len(OP) > 1: ax2.legend()
     ax2.tick_params(axis='y', labelcolor='b')
     if save:
-        path = 'results/{}'.format(data)
-        mymkdir(path)
         path = '{}/{}'.format(path, Net)
         mymkdir(path)
         plt.savefig('{}/PD_{:.3f}.jpg'.format(path, T[0].item()))
