@@ -74,8 +74,8 @@ def genData(L, t2, mu_devi, DMFT_data=False, phase_set=1):
             H0_batch = H0_samples[i * train_batchsize:(i + 1) * train_batchsize].to(device)
             T_batch = T_samples[i * train_batchsize:(i + 1) * train_batchsize].to(device)
             U_batch = U_samples[i * train_batchsize:(i + 1) * train_batchsize].to(device)
-            SE_batch, OP_batch, nf_batch, bad_batch = scf(T_batch, H0_batch, U_batch, adjMu=False, reOP=True, reNf=True,
-                                                          reBad=True, OPfuns=(op_loc,), prinfo=True)  # (bz, 1, size)
+            SE_batch, OP_batch, nf_batch, bad_batch = scf(T_batch, H0_batch, U_batch, reOP=True, reNf=True, reBad=True,
+                                                          OPfuns=(op_loc,), prinfo=True)  # (bz, 1, size)
             bad_idx_batch, bad_error_batch = bad_batch
             OPs.append(OP_batch)
             nfs.append(nf_batch)

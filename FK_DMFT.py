@@ -30,14 +30,14 @@ class DMFT:
         else:
             return E_mu.unsqueeze(-1).to(device=device, dtype=dtype)  # (bz, 1)
 
-    def init_H0(self, H0, device, dtype, adjMu, T=None, U=None, bz=None, size=None, prinfo=False):
+    def init_H0(self, H0, device, dtype, adjMu=None, T=None, bz=None, size=None, prinfo=False):
         H0 = H0.to(device=device, dtype=dtype)
-        if adjMu and self.d_filling is not None:
+        if adjMu is not None and self.d_filling is not None:
             mu = self.bisearch_dec(partial(self.fix_filling, f_ele=False),
                                    torch.zeros((bz, 1, 1), device=device, dtype=torch.float32
                                    if dtype == torch.complex64 else torch.float64), H0, T)
             if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd0_avg(mu, H0, T)).item()))
-            return H0 - torch.diag_embed((mu + U / 4).tile(1, 1, size))
+            return H0 - torch.diag_embed((mu + adjMu.to(device)).tile(1, 1, size))
         else:
             return H0   # (bz, 1, size, size)
 
@@ -160,24 +160,24 @@ class DMFT:
         return fun(nf.squeeze(1))
 
     @torch.no_grad()
-    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, adjMu=True, reOP=False, reNf=False, reBad=False,
+    def __call__(self, T, H0, U, E_mu=None, model=None, SEinit=None, adjMu=None, reOP=False, reNf=False, reBad=False,
                  OPfuns=(lambda n: (n[:, 0] - n[:, 1]).abs(),), prinfo=False):  # T, U, E_mu: (bz,)
         '''-3. get parameters'''
         device, dtype = self.iomega0.device, torch.float32 if self.iomega0.dtype == torch.complex64 else torch.float64
         bz, _, _, size = H0.shape
         '''-2. initialize variables'''
-        T = T.unsqueeze(-1).to(device=device, dtype=dtype)                                # (bz, 1)
-        iomega = torch.matmul(T + 1j * 0., self.iomega0).unsqueeze(-1)                    # (bz, self.count, 1)
-        U = U[:, None, None].to(device=device, dtype=dtype)                               # (bz, 1, 1)
-        E_mu = self.init_E_mu(E_mu, device, dtype, bz)                                    # (bz, 1)
-        H0 = self.init_H0(H0, device, self.iomega0.dtype, adjMu, T, U, bz, size, prinfo)  # (bz, 1, size, size)
+        T = T.unsqueeze(-1).to(device=device, dtype=dtype)                             # (bz, 1)
+        iomega = torch.matmul(T + 1j * 0., self.iomega0).unsqueeze(-1)                 # (bz, self.count, 1)
+        U = U[:, None, None].to(device=device, dtype=dtype)                            # (bz, 1, 1)
+        E_mu = self.init_E_mu(E_mu, device, dtype, bz)                                 # (bz, 1)
+        H0 = self.init_H0(H0, device, self.iomega0.dtype, adjMu, T, bz, size, prinfo)  # (bz, 1, size, size)
         if model is not None: model.z = iomega
         '''-1. initialize records and parameters'''
         min_error, min_errors = 1e10, None
         best_SE, best_nf = None, None
         cur_tol_sc, avg_tol_sc = self.tol_sc, self.tol_sc / bz ** 0.5
         '''0. initialize self-energy'''
-        SE = self.init_SE(SEinit, device, self.iomega0.dtype, bz, size)                   # (bz, self.count, size)
+        SE = self.init_SE(SEinit, device, self.iomega0.dtype, bz, size)                # (bz, self.count, size)
         for l in range(self.MAXEPOCH):
             '''1. compute G_{loc}'''
             Gloc = self.calc_Gloc(H0 + torch.diag_embed(SE), iomega, model)
