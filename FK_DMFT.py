@@ -291,7 +291,7 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = f'FK_{L}_QPT'
-    Net = 'Naive_sf_1'
+    Net = 'Naive_1'
     T = 0.005
     save = True
     show = True
@@ -315,9 +315,10 @@ if __name__ == "__main__":
     # mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
     # U = torch.ones(len(mu))
     # T = T * torch.ones(len(U))
+    # adjMu = U / 4
     # H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     # t = time.time()
-    # SE, OP, Bad = scf(T, H0, U, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
+    # SE, OP, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
     # print(time.time() - t)
     # print('order parameter:\n', OP.cpu().numpy())
     # print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
@@ -347,6 +348,7 @@ if __name__ == "__main__":
     mu = torch.zeros(len(tp))
     # U = torch.linspace(1., 4., 150)
     # mu = U / 2.
+    adjMu = U / 4
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     PTPs = {'0.005':(0.575, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.5, 1.76), '0.110': (1.7, 2.01),
             '0.120': (1.8, 2.28), '0.130': (2.0, 2.6), '0.140': (2.2, 3.03), '0.150': (2.4, 3.99)}
@@ -376,12 +378,12 @@ if __name__ == "__main__":
             if type(SEs) is torch.Tensor:
                 SE = SEs[i * bz:(i + 1) * bz].to(device)
             else:
-                SE, op = scf(T_batch, H0_batch, U_batch, model=None, reOP=True, OPfuns=(op_cb, op_str),
+                SE, op = scf(T_batch, H0_batch, U_batch, model=None, adjMu=adjMu, reOP=True, OPfuns=(op_cb, op_str),
                              prinfo=True if i == 0 else False)  # (bz, scf.count, size)
                 SEs.append(SE.cpu())
                 OP.append(op.cpu())
         else:
-            SE, op = scf(T_batch, H0_batch, U_batch, model=model, reOP=True, OPfuns=(op_cb, op_str),
+            SE, op = scf(T_batch, H0_batch, U_batch, model=model, adjMu=adjMu, reOP=True, OPfuns=(op_cb, op_str),
                          prinfo=True if i == 0 else False)  # (bz, scf.count, size)
             OP.append(op.cpu())
         if Net.startswith('C') or 'sf' in Net:
