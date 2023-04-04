@@ -37,7 +37,7 @@ class DMFT:
                                    torch.zeros((bz, 1, 1), device=device, dtype=torch.float32
                                    if dtype == torch.complex64 else torch.float64), H0, T)
             if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd0_avg(mu, H0, T)).item()))
-            return H0 - torch.diag_embed((mu + U / 2).tile(1, 1, size))
+            return H0 - torch.diag_embed((mu + U / 4).tile(1, 1, size))
         else:
             return H0   # (bz, 1, size, size)
 
@@ -287,7 +287,7 @@ if __name__ == "__main__":
     torch.set_num_threads(threads)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.manual_seed(0)
+    torch.manual_seed(10)
 
     L = 12  # size = L ** 2
     data = f'FK_{L}_QPT'
@@ -300,14 +300,14 @@ if __name__ == "__main__":
     count = 20
     iota = 0.
     momentum = 0.5
-    momDisor = 0.
-    maxEpoch = 2000
+    momDisor = 0.1
+    maxEpoch = 1000
     milestone = 50
     f_filling = 0.5
     d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
-    gap = 1.
+    gap = 5.
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
@@ -348,7 +348,7 @@ if __name__ == "__main__":
     # U = torch.linspace(1., 4., 150)
     # mu = U / 2.
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
-    PTPs = {'0.005':(0.6, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.5, 1.76), '0.110': (1.7, 2.01),
+    PTPs = {'0.005':(0.575, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.5, 1.76), '0.110': (1.7, 2.01),
             '0.120': (1.8, 2.28), '0.130': (2.0, 2.6), '0.140': (2.2, 3.03), '0.150': (2.4, 3.99)}
     try:
         PTP, QMCPTP = PTPs[f'{T:.3f}']
@@ -429,7 +429,7 @@ if __name__ == "__main__":
     ax2.set_yticks(0.1 * np.arange(11))
     for i, op in enumerate(OP):
         ax2.scatter(x, op, s=10, marker='^', label=labels[i])
-    if len(OP) > 1: ax2.legend()
+    if len(OP) > 1: ax2.legend(loc='center right')
     ax2.tick_params(axis='y', labelcolor='b')
     if save:
         path = '{}/{}'.format(path, Net)
