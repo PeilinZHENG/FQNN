@@ -228,9 +228,6 @@ class DMFT:
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
                     m = torch.normal(self.momentum, self.momDisor, (1,)).clamp(min=0., max=1.).item()
                 SE = m * SE + (1. - m) * (WeissInv - Gimp.pow(-1))
-        if prinfo:
-            for i, op in enumerate(best_nf.cpu().numpy()):
-                print(i, '\n', op)
         res = [best_SE, torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0) if reOP else None,
                best_nf if reNf else None, [idx, min_errors] if reBad else None]
         res = [x for x in res if x is not None]
@@ -311,20 +308,22 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    # tp = torch.linspace(0.1, 1.4, 66)
-    # mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
-    # U = torch.ones(len(mu))
-    # T = T * torch.ones(len(U))
-    # adjMu = U / 4
-    # H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
-    # t = time.time()
-    # SE, OP, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)  # (bz, 1, size)
-    # print(time.time() - t)
-    # print('order parameter:\n', OP.cpu().numpy())
-    # print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
-    # print('bad index:', Bad[0].cpu().numpy())
-    # print('bad error:', Bad[1].cpu().numpy())
-    # exit(0)
+    tp = torch.linspace(0., 1.2, 61)
+    mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
+    U = torch.ones(len(mu))
+    T = T * torch.ones(len(U))
+    adjMu = torch.cat((torch.ones(18) / 2, torch.ones(22) / 4, torch.zeros(21)))
+    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    t = time.time()
+    SE, OP, nf, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reNf=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)
+    print(time.time() - t)
+    for i, op in enumerate(nf.cpu().numpy()):
+        print(i, '\n', op)
+    print('order parameter:\n', OP.cpu().numpy())
+    print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
+    print('bad index:', Bad[0].cpu().numpy())
+    print('bad error:', Bad[1].cpu().numpy())
+    exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir
