@@ -291,7 +291,7 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = f'FK_{L}_QPT'
-    Net = 'Naive_1'
+    Net = 'Naive_0'
     T = 0.005
     save = True
     show = True
@@ -413,10 +413,12 @@ if __name__ == "__main__":
     '''plot phase diagram'''
     labels = ['cb', 'stripe']
     fig, ax1 = plt.subplots()
-    plt.title(f'Metal VS Insulator / T={T[0].item():.3f}, L={L}')
     plt.axis([x[0], x[-1], 0., 1.])
-    ax1.set_xlim([x[0], x[-1]])
+    plt.title(f'Checkerboard VS Stripe / T={T[0].item():.3f}, L={L}')
     ax1.set_xlabel("t'")
+    # plt.title(f'Metal VS Insulator / T={T[0].item():.3f}, L={L}')
+    # ax1.set_xlabel("U")
+    ax1.set_xlim([x[0], x[-1]])
     ax1.set_ylabel('P', c='r')
     ax1.set_ylim([0., 1.])
     ax1.set_yticks(0.1 * np.arange(11))
