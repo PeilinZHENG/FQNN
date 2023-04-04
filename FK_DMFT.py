@@ -37,7 +37,7 @@ class DMFT:
                                    torch.zeros((bz, 1, 1), device=device, dtype=torch.float32
                                    if dtype == torch.complex64 else torch.float64), H0, T)
             if prinfo: print('<nd>: {:.3f}'.format(torch.mean(self.calc_nd0_avg(mu, H0, T)).item()))
-            return H0 - torch.diag_embed((mu + adjMu.to(device)).tile(1, 1, size))
+            return H0 - torch.diag_embed((mu + adjMu.to(device)[:, None, None]).tile(1, 1, size))
         else:
             return H0   # (bz, 1, size, size)
 
