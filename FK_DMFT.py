@@ -406,19 +406,20 @@ if __name__ == "__main__":
         torch.save(torch.cat(SEs, dim=0), f'results/{data}/SE+OP/SE_{T[0].item():.3f}.pt')
         torch.save(OP, f'results/{data}/SE+OP/OP_{T[0].item():.3f}.pt')
     OP = OP.numpy()
-    U = U.numpy()
+    x = tp.numpy() # U.numpy()
 
     '''plot phase diagram'''
+    labels = ['cb', 'stripe']
     fig, ax1 = plt.subplots()
     plt.title(f'Metal VS Insulator / T={T[0].item():.3f}, L={L}')
-    plt.axis([U[0], U[-1], 0., 1.])
-    ax1.set_xlim([U[0], U[-1]])
-    ax1.set_xlabel('U')
+    plt.axis([x[0], x[-1], 0., 1.])
+    ax1.set_xlim([x[0], x[-1]])
+    ax1.set_xlabel("t'")
     ax1.set_ylabel('P', c='r')
     ax1.set_ylim([0., 1.])
     ax1.set_yticks(0.1 * np.arange(11))
-    ax1.scatter(U, P, s=10, c='r', marker='o')
-    ax1.plot([U[0], U[-1]], [0.5, 0.5], 'ko--', linewidth=0.5, markersize=0.1)
+    ax1.scatter(x, P, s=10, c='r', marker='o')
+    ax1.plot([x[0], x[-1]], [0.5, 0.5], 'ko--', linewidth=0.5, markersize=0.1)
     if PTP is not None: ax1.plot([PTP, PTP], [0., 1.], 'go--', linewidth=0.5, markersize=0.1)
     if QMCPTP is not None: ax1.plot([QMCPTP, QMCPTP], [0., 1.], 'yo--', linewidth=0.5, markersize=0.1)
     ax1.tick_params(axis='y', labelcolor='r')
@@ -427,7 +428,7 @@ if __name__ == "__main__":
     ax2.set_ylim([0., 1.])
     ax2.set_yticks(0.1 * np.arange(11))
     for i, op in enumerate(OP):
-        ax2.scatter(U, op, s=10, marker='^', label=f'{i}')
+        ax2.scatter(x, op, s=10, marker='^', label=labels[i])
     if len(OP) > 1: ax2.legend()
     ax2.tick_params(axis='y', labelcolor='b')
     if save:
@@ -436,4 +437,4 @@ if __name__ == "__main__":
         plt.savefig('{}/PD_{:.3f}.jpg'.format(path, T[0].item()))
     if show: plt.show()
     plt.close()
-    if save: np.save('{}/PD_{:.3f}.npy'.format(path, T[0].item()), np.stack((U, P, OP), axis=0))
+    if save: np.save('{}/PD_{:.3f}.npy'.format(path, T[0].item()), np.concatenate((np.stack((x, P), axis=0), OP), axis=0))
