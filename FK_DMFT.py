@@ -226,7 +226,7 @@ class DMFT:
                     if model is not None: model.z = iomega
                     cur_tol_sc = self.tol_sc * (len(idx) / bz) ** 0.5
                     if prinfo: print("{} loop remain: {}".format(l, len(idx)))
-                    m = (self.momentum + torch.normal(0., self.momDisor, (1,))).clamp(min=0., max=1.).item()
+                    m = torch.normal(self.momentum, self.momDisor, (1,)).clamp(min=0., max=1.).item()
                 SE = m * SE + (1. - m) * (WeissInv - Gimp.pow(-1))
         if prinfo:
             for i, op in enumerate(best_nf.cpu().numpy()):
@@ -291,7 +291,7 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = f'FK_{L}_QPT'
-    Net = 'Naive_sf_0'
+    Net = 'Naive_sf_1'
     T = 0.005
     save = True
     show = True
