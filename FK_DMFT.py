@@ -288,7 +288,7 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = f'FK_{L}_QPT'
-    Net = 'Naive_sf_1'
+    Net = 'Naive_1'
     T = 0.005
     save = True
     show = True
