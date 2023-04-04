@@ -310,9 +310,9 @@ if __name__ == "__main__":
     '''2D test'''
     tp = torch.linspace(0., 1.2, 61)
     mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
-    U = torch.ones(len(mu))
+    U = torch.ones(len(tp))
     T = T * torch.ones(len(U))
-    adjMu = torch.cat((torch.ones(18) / 2, torch.ones(22) / 4, torch.zeros(21)))
+    adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     t = time.time()
     SE, OP, nf, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reNf=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)
