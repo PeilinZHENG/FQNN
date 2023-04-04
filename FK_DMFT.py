@@ -308,22 +308,22 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    tp = torch.linspace(0., 1.2, 61)
-    mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
-    U = torch.ones(len(tp))
-    T = T * torch.ones(len(U))
-    adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
-    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
-    t = time.time()
-    SE, OP, nf, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reNf=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)
-    print(time.time() - t)
-    for i, op in enumerate(nf.cpu().numpy()):
-        print(i, '\n', op)
-    print('order parameter:\n', OP.cpu().numpy())
-    print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
-    print('bad index:', Bad[0].cpu().numpy())
-    print('bad error:', Bad[1].cpu().numpy())
-    exit(0)
+    # tp = torch.linspace(0., 1.2, 61)
+    # mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
+    # U = torch.ones(len(tp))
+    # T = T * torch.ones(len(U))
+    # adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
+    # H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    # t = time.time()
+    # SE, OP, nf, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reNf=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)
+    # print(time.time() - t)
+    # for i, op in enumerate(nf.cpu().numpy()):
+    #     print(i, '\n', op)
+    # print('order parameter:\n', OP.cpu().numpy())
+    # print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
+    # print('bad index:', Bad[0].cpu().numpy())
+    # print('bad error:', Bad[1].cpu().numpy())
+    # exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir
@@ -347,7 +347,7 @@ if __name__ == "__main__":
     mu = torch.zeros(len(tp))
     # U = torch.linspace(1., 4., 150)
     # mu = U / 2.
-    adjMu = U / 4
+    adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
     H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     PTPs = {'0.005':(0.575, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.5, 1.76), '0.110': (1.7, 2.01),
             '0.120': (1.8, 2.28), '0.130': (2.0, 2.6), '0.140': (2.2, 3.03), '0.150': (2.4, 3.99)}
