@@ -11,21 +11,21 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
 # parameters
-L = 14
-TYPE = 'train'
+L = 12
+TYPE = 'test'
 processors = 0
-if processors == 0: bz = 40
+if processors == 0: bz = 100
 # DMFT configs
 count = 20
 iota = 0.
 momentum = 0.5
-momDisor = 0.1
+momDisor = 0.
 maxEpoch = 1000
 milestone = 30
 f_filling = 0.5
 d_filling = None
 tol_sc = 1e-6
-tol_bi = 1e-6
+tol_bi = 1e-7
 gap = 1.
 double = True
 device = torch.device("cuda")
