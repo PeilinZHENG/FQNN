@@ -115,7 +115,7 @@ if __name__ == "__main__":
     os.environ['NUMEXPR_NUM_THREADS'] = '1'
     torch.set_num_threads(1)
 
-    L = 12
+    L = 14
 
     TYPE = 'train'
     amount, processors = 200, 50  # total_amount = amount * processors
