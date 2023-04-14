@@ -42,7 +42,7 @@ def Ham2(L, mu):
             H[ny, n] = H[ny, n] - 1.
             H[n, ny] = H[n, ny] - 1.
     mu = mu.unsqueeze(-1)  # (amount/2,1)
-    H = H.unsqueeze(0) + torch.diag_embed(-mu * torch.ones(L ** 2,device=device)).type(torch.complex128)  # (amount/2,2**L,2**L)
+    H = H.unsqueeze(0) + torch.diag_embed(-mu * torch.ones(L ** 2, device=device)).type(torch.complex128)  # (amount/2,2**L,2**L)
     return H
 
 
@@ -53,13 +53,13 @@ def genData(amount, L):
         U = torch.rand(1) + 2.5
         H = Ham(L, U / 2)
         Hs.append(H)
-        labels.append([(U/2).item(),U.item(), 0.])
+        labels.append([(U / 2).item(), U.item(), 0.])
         U = torch.rand(1) + 0.5
         H = Ham(L, U / 2)
         Hs.append(H)
-        labels.append([(U/2).item(),U.item(), 1.])
-    Hs = torch.stack(Hs, dim=0)        # (amount, L ** 2, L ** 2)
-    labels = torch.tensor(labels)      # (amount, 3)
+        labels.append([(U / 2).item(), U.item(), 1.])
+    Hs = torch.stack(Hs, dim=0)  # (amount, L ** 2, L ** 2)
+    labels = torch.tensor(labels)  # (amount, 3)
     return Hs, labels
 
 
@@ -92,6 +92,18 @@ def genData2(amount, L):
     return Hs, labels
 
 
+def genData_gridding(amount, L):  # 在矩形面积内随机取点，这里利用了矩形的平移
+    torch.manual_seed(int(time.time() * 1e16) % (2 ** 31 - 1))
+    Us = 2.6 * torch.rand(size=[int(amount)]) + 1.0  # Us的范围是1.0~3.6,平移后是1.0~4.中间挖去0.4
+    Ts = 0.1 * torch.rand(size=[int(amount)]) + 0.1  # Ts的范围是1.0~3.6,
+    label_bool = Us > 20 * Ts - 0.7
+    Us[label_bool] = Us[label_bool] + 0.4
+    phase_labels = label_bool + 0  # 0是metal，1是checkboard
+    Hs = Ham2(L, Us / 2)  # (amount,2**L,2**L)
+    labels = torch.stack((Us, Ts, phase_labels), dim=-1)  # (amount,3)
+    return Hs, labels
+
+
 if __name__ == "__main__":
     import warnings
 
@@ -103,33 +115,18 @@ if __name__ == "__main__":
     os.environ['NUMEXPR_NUM_THREADS'] = '1'
     torch.set_num_threads(1)
 
-    L = 10
+    L = 12
 
-    TYPE = 'test'
+    TYPE = 'train'
     amount, processors = 20, 50  # total_amount = amount * processors
-
-    # torch.manual_seed(0)
-    # genData2(amount, L)
-    # exit(0)
 
     path = 'datasets/FK_{}'.format(L)
     mymkdir(path)
     path = '{}/{}'.format(path, TYPE)
     mymkdir(path)
-
     t = time.time()
 
-    Hs, labels = [], []
-    mp.set_start_method('fork', force=True)
-    pool = mp.Pool(processes=processors)
-    res = pool.imap(partial(genData2, L=L), amount * torch.ones(processors, dtype=torch.int32))
-    for (h, l) in res:
-        Hs.append(h)
-        labels.append(l)
-    pool.close()
-    pool.join()
-    Hs = torch.cat(Hs, dim=0).unsqueeze(1)  # (amount * processors, 1, L ** 2, L ** 2)
-    labels = torch.cat(labels, dim=0)  # (amount * processors, 2)
+    Hs, labels = genData_gridding(amount, L)
 
     delta_t = time.time() - t
     print(delta_t, '\n', L, Hs.shape, labels.shape)
@@ -138,5 +135,29 @@ if __name__ == "__main__":
     f.close()
 
     # save
-    torch.save(Hs, '{}/dataset.pt'.format(path))  # (amount * processors, 1, L ** 2, L ** 2)
-    torch.save(labels, '{}/labels.pt'.format(path))  # (amount * processors, 2)
+    torch.save(Hs, '{}/dataset.pt'.format(path))  # (amount , 1, L ** 2, L ** 2)
+    torch.save(labels, '{}/labels.pt'.format(path))  # (amount , 3)
+
+
+
+    # Hs, labels = [], []
+    # mp.set_start_method('fork', force=True)
+    # pool = mp.Pool(processes=processors)
+    # res = pool.imap(partial(genData2, L=L), amount * torch.ones(processors, dtype=torch.int32))
+    # for (h, l) in res:
+    #     Hs.append(h)
+    #     labels.append(l)
+    # pool.close()
+    # pool.join()
+    # Hs = torch.cat(Hs, dim=0).unsqueeze(1)  # (amount * processors, 1, L ** 2, L ** 2)
+    # labels = torch.cat(labels, dim=0)  # (amount * processors, 2)
+
+    # delta_t = time.time() - t
+    # print(delta_t, '\n', L, Hs.shape, labels.shape)
+    # f = open('{}/info.txt'.format(path), 'w')
+    # f.write('time={}\nL={}\ndataset.shape={}\nlabels.shape={}'.format(delta_t, L, Hs.shape, labels.shape))
+    # f.close()
+    #
+    # # save
+    # torch.save(Hs, '{}/dataset.pt'.format(path))  # (amount * processors, 1, L ** 2, L ** 2)
+    # torch.save(labels, '{}/labels.pt'.format(path))  # (amount * processors, 2)
