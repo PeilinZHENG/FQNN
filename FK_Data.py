@@ -99,8 +99,8 @@ def genData_gridding(amount, L):  # 在矩形面积内随机取点，这里利�
     label_bool = Us > 20 * Ts - 0.7
     Us[label_bool] = Us[label_bool] + 0.4
     phase_labels = label_bool + 0  # 0是metal，1是checkboard
-    Hs = Ham2(L, Us / 2)  # (amount,2**L,2**L)
-    labels = torch.stack((Us, Ts, phase_labels), dim=-1)  # (amount,3)
+    Hs = Ham2(L, Us / 2)  # (amount, 2 ** L, 2 ** L)
+    labels = torch.stack((Us, Ts, phase_labels), dim=-1)  # (amount, 3)
     return Hs, labels
 
 
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     L = 12
 
     TYPE = 'train'
-    amount, processors = 20, 50  # total_amount = amount * processors
+    amount, processors = 200, 50  # total_amount = amount * processors
 
     path = 'datasets/FK_{}'.format(L)
     mymkdir(path)
@@ -126,7 +126,17 @@ if __name__ == "__main__":
     mymkdir(path)
     t = time.time()
 
-    Hs, labels = genData_gridding(amount, L)
+    Hs, labels = [], []
+    mp.set_start_method('fork', force=True)
+    pool = mp.Pool(processes=processors)
+    res = pool.imap(partial(genData_gridding, L=L), amount * torch.ones(processors, dtype=torch.int32))
+    for (h, l) in res:
+        Hs.append(h)
+        labels.append(l)
+    pool.close()
+    pool.join()
+    Hs = torch.cat(Hs, dim=0).unsqueeze(1)  # (amount * processors, 1, L ** 2, L ** 2)
+    labels = torch.cat(labels, dim=0)  # (amount * processors, 3)
 
     delta_t = time.time() - t
     print(delta_t, '\n', L, Hs.shape, labels.shape)
@@ -135,29 +145,7 @@ if __name__ == "__main__":
     f.close()
 
     # save
-    torch.save(Hs, '{}/dataset.pt'.format(path))  # (amount , 1, L ** 2, L ** 2)
-    torch.save(labels, '{}/labels.pt'.format(path))  # (amount , 3)
+    torch.save(Hs, '{}/dataset.pt'.format(path))  # (amount * processors, 1, L ** 2, L ** 2)
+    torch.save(labels, '{}/labels.pt'.format(path))  # (amount * processors, 3)
 
 
-
-    # Hs, labels = [], []
-    # mp.set_start_method('fork', force=True)
-    # pool = mp.Pool(processes=processors)
-    # res = pool.imap(partial(genData2, L=L), amount * torch.ones(processors, dtype=torch.int32))
-    # for (h, l) in res:
-    #     Hs.append(h)
-    #     labels.append(l)
-    # pool.close()
-    # pool.join()
-    # Hs = torch.cat(Hs, dim=0).unsqueeze(1)  # (amount * processors, 1, L ** 2, L ** 2)
-    # labels = torch.cat(labels, dim=0)  # (amount * processors, 2)
-
-    # delta_t = time.time() - t
-    # print(delta_t, '\n', L, Hs.shape, labels.shape)
-    # f = open('{}/info.txt'.format(path), 'w')
-    # f.write('time={}\nL={}\ndataset.shape={}\nlabels.shape={}'.format(delta_t, L, Hs.shape, labels.shape))
-    # f.close()
-    #
-    # # save
-    # torch.save(Hs, '{}/dataset.pt'.format(path))  # (amount * processors, 1, L ** 2, L ** 2)
-    # torch.save(labels, '{}/labels.pt'.format(path))  # (amount * processors, 2)
