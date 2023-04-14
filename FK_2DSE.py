@@ -6,15 +6,15 @@ from tqdm import tqdm
 from utils import myceil
 import warnings
 warnings.filterwarnings('ignore')
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
 # parameters
-L = 10
+L = 14
 TYPE = 'test'
 processors = 0
-if processors == 0: bz = 250
+if processors == 0: bz = 100
 # DMFT configs
 count = 20
 iota = 0.
