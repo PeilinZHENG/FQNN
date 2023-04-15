@@ -6,13 +6,13 @@ from tqdm import tqdm
 from utils import myceil
 import warnings
 warnings.filterwarnings('ignore')
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
 # parameters
-L = 14
-TYPE = 'test'
+L = 12
+TYPE = 'train'
 processors = 0
 if processors == 0: bz = 100
 # DMFT configs
@@ -20,7 +20,7 @@ count = 20
 iota = 0.
 momentum = 0.5
 momDisor = 0.
-maxEpoch = 1000
+maxEpoch = 5000
 milestone = 30
 f_filling = 0.5
 d_filling = None
