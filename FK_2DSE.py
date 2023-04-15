@@ -12,7 +12,7 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 # parameters
 L = 14
-TYPE = 'test'
+TYPE = 'train'
 processors = 0
 if processors == 0: bz = 50
 # DMFT configs
