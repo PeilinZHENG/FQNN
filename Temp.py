@@ -55,19 +55,10 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
         return data, index
 
 if __name__ == "__main__":
-    a = torch.rand(50, device='cuda') * 2 - 1
-    good_idx = torch.nonzero(a > 0, as_tuple=True)[0]
-    t = time.time()
-    bad_idx = torch.tensor([i for i in range(len(a)) if i not in good_idx], dtype=good_idx.dtype,
-                           device=good_idx.device)
-    t0 = time.time()
-    print(t0 - t)
-    bad_idx = torch.nonzero(a < 0, as_tuple=True)[0]
-    t1 = time.time()
-    print(t1 - t0)
-
-
-
+    path = 'results/FK_12/SE+OP/OP_0.150.pt'
+    OP = torch.load(path).unsqueeze(0)
+    print(OP.shape)
+    torch.save(OP, path)
     exit(0)
 
 

@@ -41,7 +41,7 @@ def Ham2(L, mu):
             H[n, nx] = H[n, nx] - 1.
             H[ny, n] = H[ny, n] - 1.
             H[n, ny] = H[n, ny] - 1.
-    mu = mu.unsqueeze(-1)  # (amount/2,1)
+    mu = mu.unsqueeze(-1)  # (amount/2, 1)
     H = H.unsqueeze(0) + torch.diag_embed(-mu * torch.ones(L ** 2, device=device)).type(torch.complex128)  # (amount/2,2**L,2**L)
     return H
 

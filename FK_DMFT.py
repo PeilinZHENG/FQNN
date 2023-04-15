@@ -267,7 +267,7 @@ def op_str(nf):
 
 
 if __name__ == "__main__":
-    from FK_Data import Ham
+    from FK_Data import Ham, Ham2
     import numpy as np
     import os, time, warnings
     warnings.filterwarnings('ignore')
@@ -287,9 +287,9 @@ if __name__ == "__main__":
     torch.manual_seed(10)
 
     L = 12  # size = L ** 2
-    data = f'FK_{L}_QPT'
-    Net = 'Naive_sf_0'
-    T = 0.005
+    data = f'FK_{L}'
+    Net = 'Naive_2d_0_'
+    T = 0.10
     save = True
     show = True
 
@@ -297,14 +297,14 @@ if __name__ == "__main__":
     count = 20
     iota = 0.
     momentum = 0.5
-    momDisor = 0.1
-    maxEpoch = 1000
-    milestone = 50
+    momDisor = 0.
+    maxEpoch = 5000
+    milestone = 30
     f_filling = 0.5
-    d_filling = 0.5
+    d_filling = None
     tol_sc = 1e-6
     tol_bi = 1e-7
-    gap = 5.
+    gap = 1.
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
@@ -342,13 +342,15 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
-    tp = torch.linspace(0., 1.2, 61)
-    U = torch.ones(len(tp))
-    mu = torch.zeros(len(tp))
-    # U = torch.linspace(1., 4., 150)
-    # mu = U / 2.
-    adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
-    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    # tp = torch.linspace(0., 1.2, 61)
+    # U = torch.ones(len(tp))
+    # mu = torch.zeros(len(tp))
+    # adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
+    # H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    U = torch.linspace(1., 4., 150)
+    mu = U / 2.
+    adjMu = None
+    H0 = Ham2(L, mu).unsqueeze(1)
     PTPs = {'0.005':(0.575, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.5, 1.76), '0.110': (1.7, 2.01),
             '0.120': (1.8, 2.28), '0.130': (2.0, 2.6), '0.140': (2.2, 3.03), '0.150': (2.4, 3.99)}
     try:
@@ -407,16 +409,16 @@ if __name__ == "__main__":
         torch.save(torch.cat(SEs, dim=0), f'results/{data}/SE+OP/SE_{T[0].item():.3f}.pt')
         torch.save(OP, f'results/{data}/SE+OP/OP_{T[0].item():.3f}.pt')
     OP = OP.numpy()
-    x = tp.numpy() # U.numpy()
+    x = U.numpy() # tp.numpy()
 
     '''plot phase diagram'''
     labels = ['cb', 'stripe']
     fig, ax1 = plt.subplots()
     plt.axis([x[0], x[-1], 0., 1.])
-    plt.title(f'Checkerboard VS Stripe / T={T[0].item():.3f}, L={L}')
-    ax1.set_xlabel("t'")
-    # plt.title(f'Metal VS Insulator / T={T[0].item():.3f}, L={L}')
-    # ax1.set_xlabel("U")
+    # plt.title(f'Checkerboard VS Stripe / T={T[0].item():.3f}, L={L}')
+    # ax1.set_xlabel("t'")
+    plt.title(f'Metal VS Insulator / T={T[0].item():.3f}, L={L}')
+    ax1.set_xlabel("U")
     ax1.set_xlim([x[0], x[-1]])
     ax1.set_ylabel('P', c='r')
     ax1.set_ylim([0., 1.])
