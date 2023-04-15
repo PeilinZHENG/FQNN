@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=2
+gpu=3
 threads=8
 
 # Parameters of DMFT
@@ -18,7 +18,7 @@ gap=1
 # Parameters of training
 L=12
 data=FK_${L}
-Net=Naive_2d_1
+Net=Naive_2d_0
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64
@@ -26,7 +26,7 @@ output_size=2
 restr=False       # False: fc, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
 diago=False       # True, False, 1: 1D NN, 2: 2D NN, 3: 1D NNN, 4: 2D NNN
 hermi=True        # True, False, 0: naive hermi
-bound=0.1         # initial bound
+bound=1         # initial bound
 
 entanglement=False   # False, int or float
 delta=0
@@ -44,7 +44,7 @@ ss=20
 drop=0
 disor=0
 
-epochs=100
+epochs=101
 workers=8
 batchsize=128
 print_freq=7
