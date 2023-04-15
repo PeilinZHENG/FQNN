@@ -55,7 +55,7 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
         return data, index
 
 if __name__ == "__main__":
-    path = 'results/FK_12/SE+OP/OP_0.150.pt'
+    path = 'results/FK_14/SE+OP/OP_0.150.pt'
     OP = torch.load(path).unsqueeze(0)
     print(OP.shape)
     torch.save(OP, path)
