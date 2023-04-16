@@ -288,8 +288,8 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = f'FK_{L}'
-    Net = 'Naive_3'
-    T = 0.17
+    Net = 'Naive_2d_1'
+    T = 0.1
     save = True
     show = True
 
@@ -351,9 +351,9 @@ if __name__ == "__main__":
     mu = U / 2.
     adjMu = None
     H0 = Ham2(L, mu).unsqueeze(1)
-    PTPs = {'0.005':(0.575, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.55, 1.76), '0.110': (1.65, 2.01),
-            '0.120': (1.8, 2.28), '0.130': (1.95, 2.6), '0.140': (2.15, 3.03), '0.150': (2.35, 3.99),
-            '0.160': (2.55, 4), '0.170': (2.85, 4), '0.180': (3.05, 4), '0.190': (3.3, 4), '0.200': (3.65, 4)}
+    PTPs = {'0.005':(0.575, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.47, 1.76), '0.110': (1.63, 2.01),
+            '0.120': (1.8, 2.28), '0.130': (1.96, 2.6), '0.140': (2.14, 3.03), '0.150': (2.34, 3.99),
+            '0.160': (2.54, 4), '0.170': (2.74, 4), '0.180': (2.98, 4), '0.190': (3.27, 4), '0.200': (3.57, 4)}
     try:
         PTP, QMCPTP = PTPs[f'{T:.3f}']
     except KeyError:
@@ -435,7 +435,7 @@ if __name__ == "__main__":
     ax2.set_yticks(0.1 * np.arange(11))
     for i, op in enumerate(OP):
         ax2.scatter(x, op, s=10, marker='^', label=labels[i])
-    if len(OP) > 1: ax2.legend(loc='center right')
+    ax2.legend(loc='lower right')
     ax2.tick_params(axis='y', labelcolor='b')
     if save:
         path = '{}/{}'.format(path, Net)
