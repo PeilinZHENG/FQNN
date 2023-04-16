@@ -274,7 +274,7 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
     threads = 8
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '3'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     os.environ['OMP_NUM_THREADS'] = str(threads)
     os.environ['OPENBLAS_NUM_THREADS'] = str(threads)
@@ -288,7 +288,7 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = f'FK_{L}'
-    Net = 'Naive_3'
+    Net = 'Naive_2'
     T = 0.12
     save = True
     show = True
