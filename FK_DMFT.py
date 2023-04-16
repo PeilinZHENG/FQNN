@@ -289,7 +289,7 @@ if __name__ == "__main__":
     L = 12  # size = L ** 2
     data = f'FK_{L}'
     Net = 'Naive_1'
-    T = 0.18
+    T = 0.13
     save = True
     show = True
 
