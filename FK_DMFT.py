@@ -284,7 +284,7 @@ if __name__ == "__main__":
     torch.set_num_threads(threads)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.manual_seed(10)
+    torch.manual_seed(0)
 
     L = 12  # size = L ** 2
     data = f'FK_{L}_QPT_'
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     count = 20
     iota = 0.
     momentum = 0.5
-    momDisor = 0.1
+    momDisor = 0.
     maxEpoch = 1500
     milestone = 30
     f_filling = 0.5
