@@ -288,8 +288,8 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = f'FK_{L}_QPT'
-    Net = 'Naive_2'
-    T = 0.12
+    Net = 'Naive_3'
+    T = 0.005
     save = True
     show = True
 
@@ -347,7 +347,7 @@ if __name__ == "__main__":
         tp = torch.linspace(0., 1.3, 66)
         U = torch.ones(len(tp))
         mu = torch.zeros(len(tp))
-        adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
+        adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, len(tp) - 36)))
         H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     else:
         U = torch.linspace(1., 4., 150)
