@@ -108,13 +108,13 @@ def genData(L, t2, mu_devi, DMFT_data=False, phase_set=1):
 
 def main(L, t2_amount, mu_amount):
     '生成不含DMFT的data'
-    t2 = torch.linspace(0, 0.35, t2_amount)
+    t2 = torch.linspace(0, 0.5, t2_amount)
     mu_devi = torch.linspace(-0.1, 0.5, mu_amount)
     Hs, labels = genData(L, t2, mu_devi, DMFT_data=False, phase_set=0)  # label=0, checkboard
     indices = torch.randperm(len(labels))
     H0_test, l0_test = Hs[indices[:int(len(labels) / 11)]], labels[indices[:int(len(labels) / 11)]]
     H0_train, l0_train = Hs[indices[int(len(labels) / 11):]], labels[indices[int(len(labels) / 11):]]
-    t2 = torch.linspace(0.8, 1.2, t2_amount)
+    t2 = torch.linspace(0.7, 1.2, t2_amount)
     Hs, labels = genData(L, t2, mu_devi, DMFT_data=False, phase_set=1)  # label=1, stripe
     indices = torch.randperm(len(labels))
     H1_test, l1_test = Hs[indices[:int(len(labels) / 11)]], labels[indices[:int(len(labels) / 11)]]
