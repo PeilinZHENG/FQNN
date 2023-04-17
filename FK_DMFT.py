@@ -287,8 +287,8 @@ if __name__ == "__main__":
     torch.manual_seed(10)
 
     L = 12  # size = L ** 2
-    data = f'FK_{L}_QPT'
-    Net = 'Naive_3'
+    data = f'FK_{L}_QPT_'
+    Net = 'Naive_1'
     T = 0.005
     save = True
     show = True
@@ -297,8 +297,8 @@ if __name__ == "__main__":
     count = 20
     iota = 0.
     momentum = 0.5
-    momDisor = 0.
-    maxEpoch = 2000
+    momDisor = 0.1
+    maxEpoch = 1500
     milestone = 30
     f_filling = 0.5
     d_filling = 0.5
