@@ -301,7 +301,7 @@ if __name__ == "__main__":
     maxEpoch = 2000
     milestone = 30
     f_filling = 0.5
-    d_filling = None
+    d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
     gap = 1.
@@ -342,15 +342,15 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
-    # tp = torch.linspace(0., 1.2, 61)
-    # U = torch.ones(len(tp))
-    # mu = torch.zeros(len(tp))
-    # adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
-    # H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
-    U = torch.linspace(1., 4., 150)
-    mu = U / 2.
-    adjMu = None
-    H0 = Ham2(L, mu).unsqueeze(1)
+    tp = torch.linspace(0., 1.2, 61)
+    U = torch.ones(len(tp))
+    mu = torch.zeros(len(tp))
+    adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
+    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    # U = torch.linspace(1., 4., 150)
+    # mu = U / 2.
+    # adjMu = None
+    # H0 = Ham2(L, mu).unsqueeze(1)
     PTPs = {'0.005':(0.575, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.47, 1.76), '0.110': (1.63, 2.01),
             '0.120': (1.8, 2.28), '0.130': (1.96, 2.6), '0.140': (2.14, 3.03), '0.150': (2.34, 3.99),
             '0.160': (2.54, 4), '0.170': (2.74, 4), '0.180': (2.98, 4), '0.190': (3.27, 4), '0.200': (3.57, 4)}
