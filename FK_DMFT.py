@@ -284,10 +284,10 @@ if __name__ == "__main__":
     torch.set_num_threads(threads)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.manual_seed(0)
+    torch.manual_seed(1)
 
     L = 12  # size = L ** 2
-    data = f'FK_{L}_QPT'
+    data = f'FK_{L}_QPT_'
     Net = 'Naive_0'
     T = 0.005
     save = True
@@ -298,13 +298,13 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     momDisor = 0.
-    maxEpoch = 1500
+    maxEpoch = 1000
     milestone = 30
     f_filling = 0.5
     d_filling = 0.5
     tol_sc = 1e-6
     tol_bi = 1e-7
-    gap = 1.
+    gap = 5.
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
