@@ -287,7 +287,7 @@ if __name__ == "__main__":
     torch.manual_seed(10)
 
     L = 12  # size = L ** 2
-    data = f'FK_{L}'
+    data = f'FK_{L}_QPT'
     Net = 'Naive_2'
     T = 0.12
     save = True
@@ -342,15 +342,17 @@ if __name__ == "__main__":
     model.eval()
 
     '''construct Hamiltonians'''
-    tp = torch.linspace(0., 1.2, 61)
-    U = torch.ones(len(tp))
-    mu = torch.zeros(len(tp))
-    adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
-    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
-    # U = torch.linspace(1., 4., 150)
-    # mu = U / 2.
-    # adjMu = None
-    # H0 = Ham2(L, mu).unsqueeze(1)
+    if 'QPT' in data:
+        tp = torch.linspace(0., 1.3, 66)
+        U = torch.ones(len(tp))
+        mu = torch.zeros(len(tp))
+        adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
+        H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    else:
+        U = torch.linspace(1., 4., 150)
+        mu = U / 2.
+        adjMu = None
+        H0 = Ham2(L, mu).unsqueeze(1)
     PTPs = {'0.005':(0.575, 1 / np.sqrt(2)), '0.020':(0.33, 0.392), '0.100': (1.47, 1.76), '0.110': (1.63, 2.01),
             '0.120': (1.8, 2.28), '0.130': (1.96, 2.6), '0.140': (2.14, 3.03), '0.150': (2.34, 3.99),
             '0.160': (2.54, 4), '0.170': (2.74, 4), '0.180': (2.98, 4), '0.190': (3.27, 4), '0.200': (3.57, 4)}
@@ -410,16 +412,18 @@ if __name__ == "__main__":
         torch.save(torch.cat(SEs, dim=0), f'results/{data}/SE+OP/SE_{T[0].item():.3f}.pt')
         torch.save(OP, f'results/{data}/SE+OP/OP_{T[0].item():.3f}.pt')
     OP = OP.numpy()
-    x = U.numpy() # tp.numpy()
+    x = tp.numpy() if 'QPT' in data else U.numpy()
 
     '''plot phase diagram'''
     labels = ['cb', 'stripe']
     fig, ax1 = plt.subplots()
     plt.axis([x[0], x[-1], 0., 1.])
-    # plt.title(f'Checkerboard VS Stripe / T={T[0].item():.3f}, L={L}')
-    # ax1.set_xlabel("t'")
-    plt.title(f'Metal VS Insulator / T={T[0].item():.3f}, L={L}')
-    ax1.set_xlabel("U")
+    if 'QPT' in data:
+        plt.title(f'Checkerboard VS Stripe / T={T[0].item():.3f}, L={L}')
+        ax1.set_xlabel("t'")
+    else:
+        plt.title(f'Metal VS Insulator / T={T[0].item():.3f}, L={L}')
+        ax1.set_xlabel("U")
     ax1.set_xlim([x[0], x[-1]])
     ax1.set_ylabel('P', c='r')
     ax1.set_ylim([0., 1.])
