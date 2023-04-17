@@ -269,7 +269,7 @@ def op_str(nf):
 if __name__ == "__main__":
     from FK_Data import Ham, Ham2
     import numpy as np
-    import os, time, warnings
+    import os, warnings
     warnings.filterwarnings('ignore')
     np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
@@ -308,6 +308,7 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
+    # import time
     # tp = torch.linspace(0., 1.2, 61)
     # mu = torch.zeros(len(tp))#torch.linspace(-0.5, 0.1, 31)
     # U = torch.ones(len(tp))
