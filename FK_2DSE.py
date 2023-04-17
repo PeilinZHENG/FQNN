@@ -11,7 +11,8 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 
 # parameters
-L = 14
+L = 12
+data = f'FK_{L}_QPT'
 TYPE = 'train'
 processors = 0
 if processors == 0: bz = 50
@@ -20,7 +21,7 @@ count = 20
 iota = 0.
 momentum = 0.5
 momDisor = 0.
-maxEpoch = 5000
+maxEpoch = 2000
 milestone = 30
 f_filling = 0.5
 d_filling = None
@@ -46,7 +47,7 @@ if __name__ == "__main__":
         os.environ['NUMEXPR_NUM_THREADS'] = '1'
         torch.set_num_threads(1)
 
-    path = 'datasets/FK_{}/{}'.format(L, TYPE)
+    path = 'datasets/{}/{}'.format(data, TYPE)
     H0 = torch.load('{}/dataset.pt'.format(path))  # (amount, scf.count, L ** 2, L ** 2)
     target = torch.load('{}/labels.pt'.format(path))  # (amount, 3)
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device, double)
