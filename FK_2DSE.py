@@ -15,7 +15,7 @@ L = 12
 data = f'FK_{L}_QPT'
 TYPE = 'train'
 processors = 0
-if processors == 0: bz = 50
+if processors == 0: bz = 100
 # DMFT configs
 count = 20
 iota = 0.
