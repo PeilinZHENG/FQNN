@@ -298,7 +298,7 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     momDisor = 0.
-    maxEpoch = 1000
+    maxEpoch = 5000
     milestone = 30
     f_filling = 0.5
     d_filling = 0.5
