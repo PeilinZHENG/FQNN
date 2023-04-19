@@ -274,7 +274,7 @@ if __name__ == "__main__":
     np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
     threads = 8
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
     os.environ['OMP_NUM_THREADS'] = str(threads)
     os.environ['OPENBLAS_NUM_THREADS'] = str(threads)
@@ -287,8 +287,8 @@ if __name__ == "__main__":
     torch.manual_seed(1)
 
     L = 12  # size = L ** 2
-    data = f'FK_{L}_QPT_'
-    Net = 'Naive_sf_1'
+    data = f'FK_{L}_QPT'
+    Net = 'Naive_2'
     T = 0.005
     save = True
     show = True
