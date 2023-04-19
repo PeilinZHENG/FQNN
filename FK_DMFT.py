@@ -288,7 +288,7 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = f'FK_{L}_QPT_'
-    Net = 'Naive_2d_3'
+    Net = 'Naive_2'
     T = 0.005
     save = True
     show = True
@@ -298,7 +298,7 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     momDisor = 0.
-    maxEpoch = 5000
+    maxEpoch = 1000
     milestone = 30
     f_filling = 0.5
     d_filling = 0.5
