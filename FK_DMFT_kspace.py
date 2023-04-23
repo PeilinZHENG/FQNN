@@ -1,15 +1,16 @@
 import numpy as np
-import cmath, math
+from functools import partial
 
 T = 0.005
-U = 10.0
-mu = np.zeros(61)
-tp = np.arange(61)
+tp = np.linspace(0., 1.3, 66)
+U = np.ones(len(tp))
+mu = np.zeros(len(tp))
 count = 100
 gap = 1
 tol_bi = 1e-7
 iota = 0
-iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T       # (count * 2, 1)
+iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
+adjMu = np.concatenate((np.linspace(0.5, -0.1, 36), np.linspace(-0.1, 0.05, len(tp) - 36)))
 
 
 def calc_Gloc(sigma, kstep=100):
@@ -20,19 +21,27 @@ def calc_Gloc(sigma, kstep=100):
             for n in range(count * 2):
                 iomegan = 1j * (n * 2 - count * 2 + 1) * np.pi * T
                 ga[n] += (iomegan + mu - sigmab[n]) / (
-                            (iomegan + mu - sigmab[n]) * (iomegan + mu - sigmaa[n]) - mepsilonk ** 2) / kstep ** 2
+                        (iomegan + mu - sigmab[n]) * (iomegan + mu - sigmaa[n]) - mepsilonk ** 2) / kstep ** 2
                 gb[n] += (iomegan + mu - sigmaa[n]) / (
-                            (iomegan + mu - sigmab[n]) * (iomegan + mu - sigmaa[n]) - mepsilonk ** 2) / kstep ** 2
+                        (iomegan + mu - sigmab[n]) * (iomegan + mu - sigmaa[n]) - mepsilonk ** 2) / kstep ** 2
     return Gloc  # (bz, count * 2, 4)
 
 
 def calc_nf(E_mu, UoverWI):
     z = E_mu / T - np.sum(np.log(1 - UoverWI) * np.exp(iomega * iota), axis=1)  # (bz, 4)
-    return np.nan_to_num((1 / (1 + np.exp(z))).real, nan=0.)                    # (bz, 4)
+    return np.nan_to_num((1 / (1 + np.exp(z))).real, nan=0.)  # (bz, 4)
 
 
-def fix_filling(E, UoverWI):
-    return calc_nf(E, UoverWI).mean(axis=-1) - 0.5   # (bz,)
+def calc_nd0_avg(mu, H0):
+    FDD = np.nan_to_num(1 / 1 + np.exp((np.linalg.eigvalsh(H0) - mu)[:, None, :] / T), nan=0.)
+    return np.mean(FDD, axis=-1)  # (bz,)
+
+
+def fix_filling(a, args, f_ele=True):
+    if f_ele:
+        return calc_nf(a, args).mean(axis=-1) - 0.5  # (bz,)
+    else:
+        return calc_nd0_avg(a, args) - 0.5  # (bz,)
 
 
 def bisearch(fun, a, args):
@@ -80,15 +89,17 @@ def bisearch(fun, a, args):
 
 
 def calc_sigma(Gloc, nf):
-    return U / 2 - (1 - np.sqrt(1 + (U * Gloc) ** 2 + (U * Gloc) * (4 * nf - 2))) / 2 / Gloc   # (bz, count * 2, 4)
+    return U / 2 - (1 - np.sqrt(1 + (U * Gloc) ** 2 + (U * Gloc) * (4 * nf - 2))) / 2 / Gloc  # (bz, count * 2, 4)
 
 
 if __name__ == "__main__":
-    sigma = np.random.rand((len(mu), count * 2, 4)) * 0.1 + np.zeros((len(mu), count * 2, 4)) * 1j # (bz, count * 2, 4)
-    E_mu = np.zeros((len(mu), 1))   # (bz, 1)
+    mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1)), H0)
+    H0 = H0 - np.diag_embed((mu + adjMu[:, None, None]).tile(1, 1, 4))
+    sigma = np.random.rand((len(mu), count * 2, 4)) * 0.1 + np.zeros((len(mu), count * 2, 4)) * 1j  # (bz, count * 2, 4)
+    E_mu = np.zeros((len(mu), 1))  # (bz, 1)
     for step in range(20):
-        Gloc = calc_Gloc(sigma)                       # (bz, count * 2, 4)
-        UoverWI = U / (1 / Gloc + sigma)              # (bz, count * 2, 4)
-        E_mu = bisearch(fix_filling, E_mu, UoverWI)   # (bz, 1)
-        nf = calc_nf(E_mu, UoverWI)[:, None, :]       # (bz, 1, 4)
-        sigma = calc_sigma(Gloc, nf)                  # (bz, count * 2, 4)
+        Gloc = calc_Gloc(sigma)  # (bz, count * 2, 4)
+        UoverWI = U / (1 / Gloc + sigma)  # (bz, count * 2, 4)
+        E_mu = bisearch(fix_filling, E_mu, UoverWI)  # (bz, 1)
+        nf = calc_nf(E_mu, UoverWI)[:, None, :]  # (bz, 1, 4)
+        sigma = calc_sigma(Gloc, nf)  # (bz, count * 2, 4)
