@@ -80,7 +80,7 @@ def bisearch(fun, a, args):
 
 
 def calc_sigma(Gloc, nf):
-    return U / 2 - (1 - np.sqrt(1 + (U * Gloc) ** 2 + (U * Gloc) * (4 * nf - 2))) / 2 / Gloc
+    return U / 2 - (1 - np.sqrt(1 + (U * Gloc) ** 2 + (U * Gloc) * (4 * nf - 2))) / 2 / Gloc   # (bz, count * 2, 4)
 
 
 if __name__ == "__main__":
