@@ -287,8 +287,8 @@ if __name__ == "__main__":
     torch.manual_seed(4396)
 
     L = 12  # size = L ** 2
-    data = f'FK_{L}_QPT_'
-    Net = 'Naive_sf_1'
+    data = f'FK_{L}_QPT'
+    Net = 'Naive_sf_0'
     T = 0.005
     save = True
     show = True
@@ -308,23 +308,23 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    import time
-    tp = 0.8 * torch.ones(31) # torch.linspace(0., 1.2, 61)
-    mu = torch.zeros(len(tp)) # torch.linspace(-0.5, 0.1, 31)
-    U = torch.ones(len(tp))
-    T = T * torch.ones(len(U))
-    adjMu = torch.linspace(-0.1, 0.5, len(tp)) #torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
-    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
-    t = time.time()
-    SE, OP, nf, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reNf=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)
-    print(time.time() - t)
-    for i, op in enumerate(nf.cpu().numpy()):
-        print(i, '\n', op)
-    print('order parameter:\n', OP.cpu().numpy())
-    print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
-    print('bad index:', Bad[0].cpu().numpy())
-    print('bad error:', Bad[1].cpu().numpy())
-    exit(0)
+    # import time
+    # tp = 0.8 * torch.ones(31) # torch.linspace(0., 1.2, 61)
+    # mu = torch.zeros(len(tp)) # torch.linspace(-0.5, 0.1, 31)
+    # U = torch.ones(len(tp))
+    # T = T * torch.ones(len(U))
+    # adjMu = torch.linspace(-0.1, 0.5, len(tp)) #torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
+    # H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    # t = time.time()
+    # SE, OP, nf, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reNf=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)
+    # print(time.time() - t)
+    # for i, op in enumerate(nf.cpu().numpy()):
+    #     print(i, '\n', op)
+    # print('order parameter:\n', OP.cpu().numpy())
+    # print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
+    # print('bad index:', Bad[0].cpu().numpy())
+    # print('bad error:', Bad[1].cpu().numpy())
+    # exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir
