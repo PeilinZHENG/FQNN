@@ -75,6 +75,11 @@ def bisearch(fun, a, args):
     fb = fun(b, args)
     print('determine interval')
     for i in np.nonzero(np.sign(fa) * np.sign(fb) > 0)[0]:
+        while abs(fa[i] - fb[i]) < 1e-3:
+            a[i] = a[i] - gap
+            fa[i] = fun(a[i:i + 1], args[i:i + 1])
+            b[i] = b[i] + gap
+            fb[i] = fun(b[i:i + 1], args[i:i + 1])
         print(i, 'before', fa[i], fb[i])
         if fa[i] > 0:
             if fa[i] < fb[i]:
