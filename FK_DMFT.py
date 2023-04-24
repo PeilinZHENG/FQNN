@@ -229,7 +229,7 @@ class DMFT:
                     m = torch.normal(self.momentum, self.momDisor, (1,)).clamp(min=0., max=1.).item()
                 SE = m * SE + (1. - m) * (WeissInv - Gimp.pow(-1))
         res = [best_SE, torch.stack([self.calc_OP(fun, best_nf) for fun in OPfuns], dim=0) if reOP else None,
-               best_nf if reNf else None, [idx, min_errors] if reBad else None]
+               best_nf.squeeze(1) if reNf else None, [idx, min_errors] if reBad else None]
         res = [x for x in res if x is not None]
         return res if len(res) > 1 else res[0]
 
