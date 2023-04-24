@@ -18,7 +18,7 @@ iota = 0
 momentum = 0.5
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
 adjMu = np.concatenate((np.linspace(0.5, -0.1, 36), np.linspace(-0.1, 0.05, len(tp) - 36)))
-size = L * L
+size = 4
 
 
 def Hk(tp):
@@ -75,6 +75,20 @@ def bisearch(fun, a, args):
     fb = fun(b, args)
     print('determine interval')
     for i in np.nonzero(np.sign(fa) * np.sign(fb) > 0)[0]:
+        if fa[i] == fb[i]:
+            while True:
+                a[i] = a[i] - gap
+                fa[i] = fun(a[i:i + 1], args[i:i + 1])
+                b[i] = b[i] + gap
+                fb[i] = fun(b[i:i + 1], args[i:i + 1])
+                if fa[i] != fb[i]:
+                    if fa[i] == -0.5 or fa[i] == 0.5:
+                        a[i] = b[i] - gap
+                        fa[i] = fun(a[i:i + 1], args[i:i + 1])
+                    else:
+                        b[i] = a[i] + gap
+                        fb[i] = fun(b[i:i + 1], args[i:i + 1])
+                    break
         if fa[i] > 0:
             if fa[i] < fb[i]:
                 while fa[i] > 0:
@@ -126,15 +140,15 @@ def op_cb(nf):
     L = round(nf.shape[-1] ** 0.5)
     line = (-1) ** np.arange(L)
     mask = np.concatenate([line * (-1) ** i for i in range(L)])
-    return 2 * np.abs(np.mean(nf * mask, axis=-1))
+    return 2 * np.abs(np.mean(nf * mask, axis=-1))  # (bz,)
 
 
 def op_str(nf):
-    L = int(nf.shape[-1] ** 0.5)
-    line = torch.ones(L, device=nf.device)
-    mask1 = torch.cat([line * (-1) ** i for i in range(L)])
-    mask2 = ((-1) ** torch.arange(L, device=nf.device)).tile(L)
-    return 2 * torch.max(torch.mean(nf * mask1, dim=-1).abs(), torch.mean(nf * mask2, dim=-1).abs())  # (bz,)
+    L = round(nf.shape[-1] ** 0.5)
+    line = np.ones(L)
+    mask1 = np.concatenate([line * (-1) ** i for i in range(L)])
+    mask2 = np.tile((-1) ** np.arange(L), L)
+    return 2 * np.maximum(np.abs(np.mean(nf * mask1, axis=-1)), np.abs(np.mean(nf * mask2, axis=-1)))  # (bz,)
 
 
 if __name__ == "__main__":
@@ -158,3 +172,5 @@ if __name__ == "__main__":
         sigma = momentum * sigma + (1. - momentum) * new_sigma  # (bz, count * 2, 4)
     for i, op in enumerate(nf):
         print(i, '\n', op)
+    print('checkerboard:\n', op_cb(nf))
+    print('stripe:\n', op_str(nf))
