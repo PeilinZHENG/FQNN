@@ -4,7 +4,7 @@ from FK_Data import Ham
 import warnings
 warnings.filterwarnings('ignore')
 np.set_printoptions(precision=3, linewidth=80, suppress=True)
-np.random.seed(10)
+np.random.seed(4396)
 
 
 L = 12
@@ -24,13 +24,13 @@ size = 4
 
 def Hk(tp):
     n = L // 2
-    temp = np.arange(-np.pi, np.pi, 2 * np.pi / n)
+    temp = np.arange(-np.pi / 2, np.pi / 2, np.pi / n)
     kx, ky = np.tile(temp, n), np.repeat(temp, n)
     AA = np.zeros(n * n)
-    AB = 2 * np.cos(kx / 2)
-    AC = 2 * np.cos(ky / 2)
-    AD = 2 * tp * np.cos((kx + ky) / 2)
-    BC = 2 * tp * np.cos((kx - ky) / 2)
+    AB = 2 * np.cos(kx)
+    AC = 2 * np.cos(ky)
+    AD = 2 * tp * np.cos(kx + ky)
+    BC = 2 * tp * np.cos(kx - ky)
     A = np.stack((AA, AB, AC, AD), axis=1)
     B = np.stack((AB, AA, BC, AC), axis=1)
     C = np.stack((AC, BC, AA, AB), axis=1)
@@ -146,6 +146,7 @@ if __name__ == "__main__":
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
     H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, size)))
     sigma = 0.1 * (2 * np.random.rand(len(tp), count * 2, size) - 1).astype(np.complex128)  # (bz, count * 2, 4)
+    # sigma = np.zeros((len(tp), count * 2, size), dtype=np.complex128)
     E_mu = np.zeros((len(tp), 1))  # (bz, 1)
     for l in range(epochs):
         Gloc = calc_Gloc(H0, sigma)  # (bz, count * 2, 4)
