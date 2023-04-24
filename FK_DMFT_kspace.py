@@ -2,9 +2,10 @@ import numpy as np
 from functools import partial
 from FK_Data import Ham
 import warnings
-
 warnings.filterwarnings('ignore')
-# np.set_printoptions(precision=3, linewidth=80, suppress=True)
+np.set_printoptions(precision=3, linewidth=80, suppress=True)
+np.random.seed(10)
+
 
 L = 12
 T = 0.005
@@ -73,45 +74,38 @@ def bisearch(fun, a, args):
     fa = fun(a, args)
     b = a + gap
     fb = fun(b, args)
-    print('determine interval')
     for i in np.nonzero(np.sign(fa) * np.sign(fb) > 0)[0]:
-        while abs(fa[i] - fb[i]) < 1e-3:
+        while np.abs(fa[i] - fb[i]) < 1e-8:
             a[i] = a[i] - gap
             fa[i] = fun(a[i:i + 1], args[i:i + 1])
             b[i] = b[i] + gap
             fb[i] = fun(b[i:i + 1], args[i:i + 1])
-        print(i, 'before', fa[i], fb[i])
         if fa[i] > 0:
             if fa[i] < fb[i]:
                 while fa[i] > 0:
                     b[i], fb[i] = a[i], fa[i]
                     a[i] = a[i] - gap
                     fa[i] = fun(a[i:i + 1], args[i:i + 1])
-                    print(i, '1', a[i], fa[i])
             else:
                 while fb[i] > 0:
                     a[i], fa[i] = b[i], fb[i]
                     b[i] = b[i] + gap
                     fb[i] = fun(b[i:i + 1], args[i:i + 1])
-                    print(i, '2', b[i], fb[i])
         else:
             if fa[i] < fb[i]:
                 while fb[i] < 0:
                     a[i], fa[i] = b[i], fb[i]
                     b[i] = b[i] + gap
                     fb[i] = fun(b[i:i + 1], args[i:i + 1])
-                    print(i, '3', b[i], fb[i])
             else:
                 while fa[i] < 0:
                     b[i], fb[i] = a[i], fa[i]
                     a[i] = a[i] - gap
                     fa[i] = fun(a[i:i + 1], args[i:i + 1])
-                    print(i, '4', a[i], fa[i])
     index = np.nonzero(np.abs(fa) < tol_bi)
     if len(index[0]) > 0: b[index] = a[index]
     index = np.nonzero(np.abs(fb) < tol_bi)
     if len(index[0]) > 0: a[index] = b[index]
-    print('start bisearch')
     while True:
         c = (a + b) / 2
         fc = fun(c, args)
@@ -147,7 +141,7 @@ if __name__ == "__main__":
     if size == 4:
         H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]  # (bz, 1, L * L / 4, 4, 4)
     else:
-        H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]
+        H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]  # (bz, 1, 1, L * L, L * L)
     mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
     H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, size)))
