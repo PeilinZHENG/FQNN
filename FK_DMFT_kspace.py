@@ -2,6 +2,7 @@ import numpy as np
 from functools import partial
 from FK_Data import Ham
 import warnings
+
 warnings.filterwarnings('ignore')
 np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
@@ -17,7 +18,7 @@ iota = 0
 momentum = 0.5
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
 adjMu = np.concatenate((np.linspace(0.5, -0.1, 36), np.linspace(-0.1, 0.05, len(tp) - 36)))
-size = 4
+size = L * L
 
 
 def Hk(tp):
@@ -46,7 +47,7 @@ def diag_embed(A):
 
 def calc_Gloc(H0, SE):
     temp = diag_embed(iomega - SE)[:, :, None]
-    Gloc = np.diagonal(np.linalg.inv(temp - H0), axis1=-2, axis2=-1) # (bz, count * 2, L * L / 4, 4)
+    Gloc = np.diagonal(np.linalg.inv(temp - H0), axis1=-2, axis2=-1)  # (bz, count * 2, L * L / 4, 4)
     return np.sum(Gloc, axis=2)  # (bz, count * 2, 4)
 
 
@@ -72,7 +73,7 @@ def bisearch(fun, a, args):
     fa = fun(a, args)
     b = a + gap
     fb = fun(b, args)
-    # print('determine interval')
+    print('determine interval')
     for i in np.nonzero(np.sign(fa) * np.sign(fb) > 0)[0]:
         if fa[i] > 0:
             if fa[i] < fb[i]:
@@ -80,31 +81,31 @@ def bisearch(fun, a, args):
                     b[i], fb[i] = a[i], fa[i]
                     a[i] = a[i] - gap
                     fa[i] = fun(a[i:i + 1], args[i:i + 1])
-                    # print(i, '1', a[i], fa[i])
+                    print(i, '1', a[i], fa[i])
             else:
                 while fb[i] > 0:
                     a[i], fa[i] = b[i], fb[i]
                     b[i] = b[i] + gap
                     fb[i] = fun(b[i:i + 1], args[i:i + 1])
-                    # print(i, '2', b[i], fb[i])
+                    print(i, '2', b[i], fb[i])
         else:
             if fa[i] < fb[i]:
                 while fb[i] < 0:
                     a[i], fa[i] = b[i], fb[i]
                     b[i] = b[i] + gap
                     fb[i] = fun(b[i:i + 1], args[i:i + 1])
-                    # print(i, '3', b[i], fb[i])
+                    print(i, '3', b[i], fb[i])
             else:
                 while fa[i] < 0:
                     b[i], fb[i] = a[i], fa[i]
                     a[i] = a[i] - gap
                     fa[i] = fun(a[i:i + 1], args[i:i + 1])
-                    # print(i, '4', a[i], fa[i])
+                    print(i, '4', a[i], fa[i])
     index = np.nonzero(np.abs(fa) < tol_bi)
     if len(index[0]) > 0: b[index] = a[index]
     index = np.nonzero(np.abs(fb) < tol_bi)
     if len(index[0]) > 0: a[index] = b[index]
-    # print('start bisearch')
+    print('start bisearch')
     while True:
         c = (a + b) / 2
         fc = fun(c, args)
@@ -122,8 +123,10 @@ def calc_sigma(Gloc, nf):
 
 
 if __name__ == "__main__":
-    H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]   # (bz, 1, L * L / 4, 4, 4)
-    # H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]
+    if size == 4:
+        H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]  # (bz, 1, L * L / 4, 4, 4)
+    else:
+        H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]
     mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
     H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, size)))
@@ -135,6 +138,8 @@ if __name__ == "__main__":
         E_mu = bisearch(fix_filling, E_mu, UoverWI)  # (bz, 1)
         nf = calc_nf(E_mu, UoverWI)  # (bz, 4)
         print('{} loop <nf>: {:.3f}'.format(l, np.mean(nf)))
-        sigma = momentum * sigma + (1. - momentum) * calc_sigma(Gloc, nf[:, None])   # (bz, count * 2, 4)
+        new_sigma = calc_sigma(Gloc, nf[:, None])  # (bz, count * 2, 4)
+        print("{} loop error: {:.3e}".format(l, np.linalg.norm(new_sigma - sigma)))
+        sigma = momentum * sigma + (1. - momentum) * new_sigma  # (bz, count * 2, 4)
     for i, op in enumerate(nf):
         print(i, '\n', op)
