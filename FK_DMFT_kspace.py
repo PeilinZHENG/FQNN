@@ -1,22 +1,23 @@
 import numpy as np
 from functools import partial
+from FK_Data import Ham
 import warnings
 warnings.filterwarnings('ignore')
 np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
 L = 12
 T = 0.005
+U = 1.
 tp = np.linspace(0., 1.3, 66)
-U = np.ones(len(tp))
 epochs = 100
-count = 100
+count = 20
 gap = 1
 tol_bi = 1e-7
 iota = 0
 momentum = 0.5
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
 adjMu = np.concatenate((np.linspace(0.5, -0.1, 36), np.linspace(-0.1, 0.05, len(tp) - 36)))
-size = L * L
+size = 4
 
 
 def Hk(tp):
@@ -32,11 +33,12 @@ def Hk(tp):
     B = np.stack((AB, AA, BC, AC), axis=1)
     C = np.stack((AC, BC, AA, AB), axis=1)
     D = np.stack((AD, AC, AB, AA), axis=1)
-    return np.stack((A, B, C, D), axis=1)  # (size / 4, 4, 4)
+    return np.stack((A, B, C, D), axis=1)  # (L * L / 4, 4, 4)
+
 
 def diag_embed(A):
     n = A.shape[-1]
-    B = np.zeros_like(list(A.shape) + [n])
+    B = np.zeros(list(A.shape) + [n], dtype=A.dtype)
     r = np.arange(n)
     B[..., r, r] = A[..., r]
     return B
@@ -44,7 +46,7 @@ def diag_embed(A):
 
 def calc_Gloc(H0, SE):
     temp = diag_embed(iomega - SE)[:, :, None]
-    Gloc = np.diagonal(np.linalg.inv(temp - H0), axis1=-2, axis2=-1) # (bz, count * 2, size / 4, 4)
+    Gloc = np.diagonal(np.linalg.inv(temp - H0), axis1=-2, axis2=-1) # (bz, count * 2, L * L / 4, 4)
     return np.sum(Gloc, axis=2)  # (bz, count * 2, 4)
 
 
@@ -54,7 +56,7 @@ def calc_nf(E_mu, UoverWI):
 
 
 def calc_nd0_avg(mu, H0):
-    FDD = np.nan_to_num(1 / 1 + np.exp((np.linalg.eigvalsh(H0) - mu) / T), nan=0.)
+    FDD = np.nan_to_num(1 / (1 + np.exp((np.linalg.eigvalsh(H0) - mu) / T)), nan=0.)
     return np.mean(FDD, axis=(1, 2, 3))  # (bz,)
 
 
@@ -70,6 +72,7 @@ def bisearch(fun, a, args):
     fa = fun(a, args)
     b = a + gap
     fb = fun(b, args)
+    # print('determine interval')
     for i in np.nonzero(np.sign(fa) * np.sign(fb) > 0)[0]:
         if fa[i] > 0:
             if fa[i] < fb[i]:
@@ -77,26 +80,31 @@ def bisearch(fun, a, args):
                     b[i], fb[i] = a[i], fa[i]
                     a[i] = a[i] - gap
                     fa[i] = fun(a[i:i + 1], args[i:i + 1])
+                    # print(i, '1', a[i], fa[i])
             else:
                 while fb[i] > 0:
                     a[i], fa[i] = b[i], fb[i]
                     b[i] = b[i] + gap
                     fb[i] = fun(b[i:i + 1], args[i:i + 1])
+                    # print(i, '2', b[i], fb[i])
         else:
             if fa[i] < fb[i]:
                 while fb[i] < 0:
                     a[i], fa[i] = b[i], fb[i]
                     b[i] = b[i] + gap
                     fb[i] = fun(b[i:i + 1], args[i:i + 1])
+                    # print(i, '3', b[i], fb[i])
             else:
                 while fa[i] < 0:
                     b[i], fb[i] = a[i], fa[i]
                     a[i] = a[i] - gap
                     fa[i] = fun(a[i:i + 1], args[i:i + 1])
+                    # print(i, '4', a[i], fa[i])
     index = np.nonzero(np.abs(fa) < tol_bi)
     if len(index[0]) > 0: b[index] = a[index]
     index = np.nonzero(np.abs(fb) < tol_bi)
     if len(index[0]) > 0: a[index] = b[index]
+    # print('start bisearch')
     while True:
         c = (a + b) / 2
         fc = fun(c, args)
@@ -114,12 +122,13 @@ def calc_sigma(Gloc, nf):
 
 
 if __name__ == "__main__":
-    H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]   # (bz, 1, size / 4, 4, 4)
+    H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]   # (bz, 1, L * L / 4, 4, 4)
+    # H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]
     mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
-    H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, 4)))
-    sigma = np.random.rand((len(mu), count * 2, 4)) * 0.1 + np.zeros((len(mu), count * 2, 4)) * 1j  # (bz, count * 2, 4)
-    E_mu = np.zeros((len(mu), 1))  # (bz, 1)
+    H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, size)))
+    sigma = 0.1 * (2 * np.random.rand(len(tp), count * 2, size) - 1).astype(np.complex128)  # (bz, count * 2, 4)
+    E_mu = np.zeros((len(tp), 1))  # (bz, 1)
     for l in range(epochs):
         Gloc = calc_Gloc(H0, sigma)  # (bz, count * 2, 4)
         UoverWI = U / (1 / Gloc + sigma)  # (bz, count * 2, 4)
