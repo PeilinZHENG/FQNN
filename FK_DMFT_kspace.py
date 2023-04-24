@@ -4,7 +4,7 @@ from FK_Data import Ham
 import warnings
 
 warnings.filterwarnings('ignore')
-np.set_printoptions(precision=3, linewidth=80, suppress=True)
+# np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
 L = 12
 T = 0.005
@@ -53,7 +53,7 @@ def calc_Gloc(H0, SE):
 
 def calc_nf(E_mu, UoverWI):
     z = E_mu / T - np.sum(np.log(1 - UoverWI) * np.exp(iomega * iota), axis=1)  # (bz, 4)
-    return np.nan_to_num((1 / (1 + np.exp(z))).real, nan=0.)  # (bz, 4)
+    return np.nan_to_num((1 / (1 + np.exp(z.real))), nan=0.)  # (bz, 4)
 
 
 def calc_nd0_avg(mu, H0):
@@ -75,20 +75,7 @@ def bisearch(fun, a, args):
     fb = fun(b, args)
     print('determine interval')
     for i in np.nonzero(np.sign(fa) * np.sign(fb) > 0)[0]:
-        if fa[i] == fb[i]:
-            while True:
-                a[i] = a[i] - gap
-                fa[i] = fun(a[i:i + 1], args[i:i + 1])
-                b[i] = b[i] + gap
-                fb[i] = fun(b[i:i + 1], args[i:i + 1])
-                if fa[i] != fb[i]:
-                    if fa[i] == -0.5 or fa[i] == 0.5:
-                        a[i] = b[i] - gap
-                        fa[i] = fun(a[i:i + 1], args[i:i + 1])
-                    else:
-                        b[i] = a[i] + gap
-                        fb[i] = fun(b[i:i + 1], args[i:i + 1])
-                    break
+        print(i, 'before', fa[i], fb[i])
         if fa[i] > 0:
             if fa[i] < fb[i]:
                 while fa[i] > 0:

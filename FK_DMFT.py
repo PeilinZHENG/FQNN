@@ -85,20 +85,6 @@ class DMFT:
         b = a + self.gap
         fb = fun(b, args, T, iomega)
         for i in torch.nonzero(fa.sign() * fb.sign() > 0, as_tuple=True)[0]:
-            if fa[i] == fb[i]:
-                while True:
-                    a[i] = a[i] - self.gap
-                    fa[i] = fun(a[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
-                    b[i] = b[i] + self.gap
-                    fb[i] = fun(b[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
-                    if fa[i] != fb[i]:
-                        if fa[i] == -self.f_filling or fa[i] == 1 - self.f_filling:
-                            a[i] = b[i] - self.gap
-                            fa[i] = fun(a[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
-                        else:
-                            b[i] = a[i] + self.gap
-                            fb[i] = fun(b[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
-                        break
             if fa[i] > 0:
                 if fa[i] < fb[i]:
                     while fa[i] > 0:
