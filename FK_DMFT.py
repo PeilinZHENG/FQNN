@@ -85,11 +85,6 @@ class DMFT:
         b = a + self.gap
         fb = fun(b, args, T, iomega)
         for i in torch.nonzero(fa.sign() * fb.sign() > 0, as_tuple=True)[0]:
-            while (fa[i] - fb[i]).abs() < 1e-8:
-                a[i] = a[i] - self.gap
-                fa[i] = fun(a[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
-                b[i] = b[i] + self.gap
-                fb[i] = fun(b[i:i + 1], args[i:i + 1], T[i:i + 1], None if iomega is None else iomega[i:i + 1])
             if fa[i] > 0:
                 if fa[i] < fb[i]:
                     while fa[i] > 0:
@@ -313,23 +308,23 @@ if __name__ == "__main__":
     scf = DMFT(count, iota, momentum, momDisor, maxEpoch, milestone, f_filling, d_filling, tol_sc, tol_bi, gap, device)
 
     '''2D test'''
-    # import time
-    # tp = 0.8 * torch.ones(31) # torch.linspace(0., 1.2, 61)
-    # mu = torch.zeros(len(tp)) # torch.linspace(-0.5, 0.1, 31)
-    # U = torch.ones(len(tp))
-    # T = T * torch.ones(len(U))
-    # adjMu = torch.linspace(-0.1, 0.5, len(tp)) #torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
-    # H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
-    # t = time.time()
-    # SE, OP, nf, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reNf=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)
-    # print(time.time() - t)
-    # for i, op in enumerate(nf.cpu().numpy()):
-    #     print(i, '\n', op)
-    # print('order parameter:\n', OP.cpu().numpy())
-    # print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
-    # print('bad index:', Bad[0].cpu().numpy())
-    # print('bad error:', Bad[1].cpu().numpy())
-    # exit(0)
+    import time
+    tp = 0.8 * torch.ones(31) # torch.linspace(0., 1.2, 61)
+    mu = torch.zeros(len(tp)) # torch.linspace(-0.5, 0.1, 31)
+    U = torch.ones(len(tp))
+    T = T * torch.ones(len(U))
+    adjMu = torch.linspace(-0.1, 0.5, len(tp)) #torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, 25)))
+    H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
+    t = time.time()
+    SE, OP, nf, Bad = scf(T, H0, U, adjMu=adjMu, reOP=True, reNf=True, reBad=True, OPfuns=(op_cb, op_str), prinfo=True)
+    print(time.time() - t)
+    for i, op in enumerate(nf.cpu().numpy()):
+        print(i, '\n', op)
+    print('order parameter:\n', OP.cpu().numpy())
+    print('order:\n', torch.max(OP, dim=0)[1].cpu().numpy())
+    print('bad index:', Bad[0].cpu().numpy())
+    print('bad error:', Bad[1].cpu().numpy())
+    exit(0)
 
     from FK_rgfnn import Network
     from utils import myceil, mymkdir

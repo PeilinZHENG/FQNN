@@ -54,7 +54,7 @@ def calc_Gloc(H0, SE):
 
 def calc_nf(E_mu, UoverWI):
     z = E_mu / T - np.sum(np.log(1 - UoverWI) * np.exp(iomega * iota), axis=1)  # (bz, 4)
-    return np.clip(np.nan_to_num((1 / (1 + np.exp(z))).real, nan=0.), a_min=0, a_max=1)  # (bz, 4)
+    return np.clip(np.nan_to_num((1 / (1 + np.exp(z))).real, nan=0.), a_min=0., a_max=1.)  # (bz, 4)
 
 
 def calc_nd0_avg(mu, H0):
