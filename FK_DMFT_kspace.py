@@ -1,5 +1,7 @@
 import numpy as np
 from functools import partial
+import warnings
+warnings.filterwarnings('ignore')
 np.set_printoptions(precision=3, linewidth=80, suppress=True)
 
 L = 12
@@ -64,11 +66,11 @@ def fix_filling(a, args, f_ele=True):
 
 
 def bisearch(fun, a, args):
-    sbz = a.size(0) ** 0.5
+    sbz = a.shape[0] ** 0.5
     fa = fun(a, args)
     b = a + gap
     fb = fun(b, args)
-    for i in np.nonzero(fa.sign() * fb.sign() > 0)[0]:
+    for i in np.nonzero(np.sign(fa) * np.sign(fb) > 0)[0]:
         if fa[i] > 0:
             if fa[i] < fb[i]:
                 while fa[i] > 0:
@@ -91,17 +93,17 @@ def bisearch(fun, a, args):
                     b[i], fb[i] = a[i], fa[i]
                     a[i] = a[i] - gap
                     fa[i] = fun(a[i:i + 1], args[i:i + 1])
-    index = np.nonzero(fa.abs() < tol_bi)
+    index = np.nonzero(np.abs(fa) < tol_bi)
     if len(index[0]) > 0: b[index] = a[index]
-    index = np.nonzero(fb.abs() < tol_bi)
+    index = np.nonzero(np.abs(fb) < tol_bi)
     if len(index[0]) > 0: a[index] = b[index]
     while True:
         c = (a + b) / 2
         fc = fun(c, args)
-        index = np.nonzero(fc.abs() < tol_bi)
+        index = np.nonzero(np.abs(fc) < tol_bi)
         if len(index[0]) > 0: a[index], b[index] = c[index], c[index]
         if np.linalg.norm((b - a) / 2) < tol_bi * sbz: return c
-        index = np.nonzero(fc.sign() * fun(a, args).sign() < 0)
+        index = np.nonzero(np.sign(fc) * np.sign(fun(a, args)) < 0)
         b[index] = c[index]
         c[index] = a[index]
         a = c
@@ -122,8 +124,8 @@ if __name__ == "__main__":
         Gloc = calc_Gloc(H0, sigma)  # (bz, count * 2, 4)
         UoverWI = U / (1 / Gloc + sigma)  # (bz, count * 2, 4)
         E_mu = bisearch(fix_filling, E_mu, UoverWI)  # (bz, 1)
-        nf = calc_nf(E_mu, UoverWI)[:, None]  # (bz, 1, 4)
+        nf = calc_nf(E_mu, UoverWI)  # (bz, 4)
         print('{} loop <nf>: {:.3f}'.format(l, np.mean(nf)))
-        sigma = momentum * sigma + (1. - momentum) * calc_sigma(Gloc, nf)   # (bz, count * 2, 4)
+        sigma = momentum * sigma + (1. - momentum) * calc_sigma(Gloc, nf[:, None])   # (bz, count * 2, 4)
     for i, op in enumerate(nf):
         print(i, '\n', op)
