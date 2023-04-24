@@ -252,14 +252,14 @@ def op_loc(nf):
 
 
 def op_cb(nf):
-    L = int(nf.shape[-1] ** 0.5)
+    L = round(nf.shape[-1] ** 0.5)
     line = (-1) ** torch.arange(L, device=nf.device)
     mask = torch.cat([line * (-1) ** i for i in range(L)])
     return 2 * torch.mean(nf * mask, dim=-1).abs()
 
 
 def op_str(nf):
-    L = int(nf.shape[-1] ** 0.5)
+    L = round(nf.shape[-1] ** 0.5)
     line = torch.ones(L, device=nf.device)
     mask1 = torch.cat([line * (-1) ** i for i in range(L)])
     mask2 = ((-1) ** torch.arange(L, device=nf.device)).tile(L)

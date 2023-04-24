@@ -122,6 +122,21 @@ def calc_sigma(Gloc, nf):
     return U / 2 - (1 - np.sqrt(1 + (U * Gloc) ** 2 + (U * Gloc) * (4 * nf - 2))) / 2 / Gloc  # (bz, count * 2, 4)
 
 
+def op_cb(nf):
+    L = round(nf.shape[-1] ** 0.5)
+    line = (-1) ** np.arange(L)
+    mask = np.concatenate([line * (-1) ** i for i in range(L)])
+    return 2 * np.abs(np.mean(nf * mask, axis=-1))
+
+
+def op_str(nf):
+    L = int(nf.shape[-1] ** 0.5)
+    line = torch.ones(L, device=nf.device)
+    mask1 = torch.cat([line * (-1) ** i for i in range(L)])
+    mask2 = ((-1) ** torch.arange(L, device=nf.device)).tile(L)
+    return 2 * torch.max(torch.mean(nf * mask1, dim=-1).abs(), torch.mean(nf * mask2, dim=-1).abs())  # (bz,)
+
+
 if __name__ == "__main__":
     if size == 4:
         H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]  # (bz, 1, L * L / 4, 4, 4)
