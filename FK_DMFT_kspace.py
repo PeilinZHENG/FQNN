@@ -27,15 +27,15 @@ def Hk(tp):
     n = L // 2
     temp = np.arange(-np.pi / 2, np.pi / 2, np.pi / n)
     kx, ky = np.tile(temp, n), np.repeat(temp, n)
-    AA = np.zeros(n * n)
-    AB = 2 * np.cos(kx)
-    AC = 2 * np.cos(ky)
-    AD = 2 * tp * np.cos(kx + ky)
-    BC = 2 * tp * np.cos(kx - ky)
-    A = np.stack((AA, AB, AC, AD), axis=1)
-    B = np.stack((AB, AA, BC, AC), axis=1)
-    C = np.stack((AC, BC, AA, AB), axis=1)
-    D = np.stack((AD, AC, AB, AA), axis=1)
+    onsite = np.zeros(n * n)
+    x = 2 * np.cos(kx)
+    y = 2 * np.cos(ky)
+    xy = 2 * tp * np.cos(kx + ky)
+    x_y = 2 * tp * np.cos(kx - ky)
+    A = np.stack((onsite, x, y, xy), axis=1)
+    B = np.stack((x, onsite, x_y, y), axis=1)
+    C = np.stack((y, x_y, onsite, x), axis=1)
+    D = np.stack((xy, y, x, onsite), axis=1)
     return np.stack((A, B, C, D), axis=1)  # (L * L / size, size, size)
 
 
@@ -134,6 +134,10 @@ if __name__ == "__main__":
     mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     if size == 4:
         H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]  # (bz, 1, L * L / size, size, size)
+    # else:
+    #     H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]  # (bz, 1, 1, L * L, L * L)
+    # print(np.linalg.eigvalsh(H0)[51].flatten().tolist())
+    # exit(0)
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
     H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, size)))
     SE = 0.01 * (2 * np.random.rand(len(tp), count * 2, size) - 1).astype(np.complex128)  # (bz, count * 2, size)
