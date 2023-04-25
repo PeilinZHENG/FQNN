@@ -7,7 +7,8 @@ np.set_printoptions(precision=3, linewidth=80, suppress=True)
 np.random.seed(4396)
 
 
-L = 12
+L = 20
+size = 4
 T = 0.005
 U = 1.
 tp = np.linspace(0., 1.3, 66)
@@ -17,9 +18,8 @@ gap = 1
 tol_bi = 1e-7
 iota = 0
 momentum = 0.5
+adjMu = np.concatenate((np.linspace(0.5, 0., 36), np.linspace(0., 0.5, len(tp) - 36)))
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
-adjMu = np.concatenate((np.linspace(0.5, -0.1, 36), np.linspace(-0.1, 0.05, len(tp) - 36)))
-size = 4
 
 
 def Hk(tp):
@@ -35,7 +35,7 @@ def Hk(tp):
     B = np.stack((AB, AA, BC, AC), axis=1)
     C = np.stack((AC, BC, AA, AB), axis=1)
     D = np.stack((AD, AC, AB, AA), axis=1)
-    return np.stack((A, B, C, D), axis=1)  # (L * L / 4, 4, 4)
+    return np.stack((A, B, C, D), axis=1)  # (L * L / size, size, size)
 
 
 def diag_embed(A):
@@ -48,13 +48,13 @@ def diag_embed(A):
 
 def calc_Gloc(H0, SE):
     temp = diag_embed(iomega - SE)[:, :, None]
-    Gloc = np.diagonal(np.linalg.inv(temp - H0), axis1=-2, axis2=-1)  # (bz, count * 2, L * L / 4, 4)
-    return np.mean(Gloc, axis=2)  # (bz, count * 2, 4)
+    Gloc = np.diagonal(np.linalg.inv(temp - H0), axis1=-2, axis2=-1)  # (bz, count * 2, L * L / size, size)
+    return np.mean(Gloc, axis=2)  # (bz, count * 2, size)
 
 
 def calc_nf(E_mu, UoverWI):
-    z = E_mu / T - np.sum(np.log(1 - UoverWI) * np.exp(iomega * iota), axis=1)  # (bz, 4)
-    return np.clip(np.nan_to_num((1 / (1 + np.exp(z))).real, nan=0.), a_min=0., a_max=1.)  # (bz, 4)
+    z = E_mu / T - np.sum(np.log(1 - UoverWI) * np.exp(iomega * iota), axis=1)  # (bz, size)
+    return np.clip(np.nan_to_num((1 / (1 + np.exp(z))).real, nan=0.), a_min=0., a_max=1.)  # (bz, size)
 
 
 def calc_nd0_avg(mu, H0):
@@ -75,11 +75,6 @@ def bisearch(fun, a, args):
     b = a + gap
     fb = fun(b, args)
     for i in np.nonzero(np.sign(fa) * np.sign(fb) > 0)[0]:
-        while np.abs(fa[i] - fb[i]) < 1e-8:
-            a[i] = a[i] - gap
-            fa[i] = fun(a[i:i + 1], args[i:i + 1])
-            b[i] = b[i] + gap
-            fb[i] = fun(b[i:i + 1], args[i:i + 1])
         if fa[i] > 0:
             if fa[i] < fb[i]:
                 while fa[i] > 0:
@@ -118,10 +113,6 @@ def bisearch(fun, a, args):
         a = c
 
 
-def calc_sigma(Gloc, nf):
-    return U / 2 - (1 - np.sqrt(1 + (U * Gloc) ** 2 + (U * Gloc) * (4 * nf - 2))) / 2 / Gloc  # (bz, count * 2, 4)
-
-
 def op_cb(nf):
     L = round(nf.shape[-1] ** 0.5)
     line = (-1) ** np.arange(L)
@@ -139,24 +130,26 @@ def op_str(nf):
 
 if __name__ == "__main__":
     if size == 4:
-        H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]  # (bz, 1, L * L / 4, 4, 4)
+        H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]  # (bz, 1, L * L / size, size, size)
     else:
         H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]  # (bz, 1, 1, L * L, L * L)
     mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
     H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, size)))
-    sigma = 0.1 * (2 * np.random.rand(len(tp), count * 2, size) - 1).astype(np.complex128)  # (bz, count * 2, 4)
-    # sigma = np.zeros((len(tp), count * 2, size), dtype=np.complex128)
+    SE = 0.01 * (2 * np.random.rand(len(tp), count * 2, size) - 1).astype(np.complex128)  # (bz, count * 2, size)
+    # SE = np.zeros((len(tp), count * 2, size), dtype=np.complex128)
     E_mu = np.zeros((len(tp), 1))  # (bz, 1)
     for l in range(epochs):
-        Gloc = calc_Gloc(H0, sigma)  # (bz, count * 2, 4)
-        UoverWI = U / (1 / Gloc + sigma)  # (bz, count * 2, 4)
+        Gloc = calc_Gloc(H0, SE)  # (bz, count * 2, size)
+        WeissInv = 1 / Gloc + SE
+        UoverWI = U / WeissInv  # (bz, count * 2, size)
         E_mu = bisearch(fix_filling, E_mu, UoverWI)  # (bz, 1)
-        nf = calc_nf(E_mu, UoverWI)  # (bz, 4)
+        nf = calc_nf(E_mu, UoverWI)[:, None]  # (bz, 1, size)
         print('{} loop <nf>: {:.3f}'.format(l, np.mean(nf)))
-        new_sigma = calc_sigma(Gloc, nf[:, None])  # (bz, count * 2, 4)
-        print("{} loop error: {:.3e}".format(l, np.linalg.norm(new_sigma - sigma)))
-        sigma = momentum * sigma + (1. - momentum) * new_sigma  # (bz, count * 2, 4)
+        Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv
+        print("{} loop error: {:.3e}".format(l, np.linalg.norm(Gimp - Gloc)))
+        SE = momentum * SE + (1. - momentum) * (WeissInv - 1 / Gimp)  # (bz, count * 2, size)
+    nf = nf.squeeze(1)
     for i, op in enumerate(nf):
         print(i, '\n', op)
     print('checkerboard:\n', op_cb(nf))
