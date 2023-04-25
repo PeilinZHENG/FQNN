@@ -3,23 +3,23 @@ from functools import partial
 from FK_Data import Ham
 import warnings
 warnings.filterwarnings('ignore')
-np.set_printoptions(precision=3, linewidth=100, suppress=True)
+np.set_printoptions(precision=3, linewidth=110, suppress=True)
 np.random.seed(4396)
 
 
-L = 36
+L = 12
 size = 4
 T = 0.005
 U = 1.
 tp = np.linspace(0., 1.3, 66)
-epochs = 100
+epochs = 1000
 count = 20
 gap = 1
 tol_bi = 1e-7
 iota = 0
-momentum = 0.99
-adjMu = 0.5 * np.ones(len(tp))
-# adjMu = np.concatenate((np.linspace(0.5, 0., 36), np.linspace(0., 0.5, len(tp) - 36)))
+momentum = 0.5
+# adjMu = 0.5 * np.ones(len(tp))
+adjMu = np.concatenate((np.linspace(0.5, -0.1, 36), np.linspace(-0.1, 0.5, len(tp) - 36)))
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
 
 
@@ -132,7 +132,7 @@ def op_str(nf):
 if __name__ == "__main__":
     if size == 4:
         H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]  # (bz, 1, L * L / size, size, size)
-    else:
+    else:  # size == L * L
         H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]  # (bz, 1, 1, L * L, L * L)
     mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
@@ -152,6 +152,6 @@ if __name__ == "__main__":
         SE = momentum * SE + (1. - momentum) * (WeissInv - 1 / Gimp)  # (bz, count * 2, size)
     nf = nf.squeeze(1)
     for i, op in enumerate(nf):
-        print(i, '\n', op)
+        print(i, '\t', op)
     print('checkerboard:\n', op_cb(nf))
     print('stripe:\n', op_str(nf))
