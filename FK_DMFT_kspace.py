@@ -18,7 +18,7 @@ gap = 1
 tol_bi = 1e-7
 iota = 0
 momentum = 0.5
-# adjMu = 0.5 * np.ones(len(tp))
+# adjMu = 0.25 * np.ones(len(tp))
 adjMu = np.concatenate((np.linspace(0.5, -0.1, 36), np.linspace(-0.1, 0.5, len(tp) - 36)))
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
 
@@ -130,11 +130,10 @@ def op_str(nf):
 
 
 if __name__ == "__main__":
+    H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]  # (bz, 1, 1, L * L, L * L)
+    mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     if size == 4:
         H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]  # (bz, 1, L * L / size, size, size)
-    else:  # size == L * L
-        H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]  # (bz, 1, 1, L * L, L * L)
-    mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
     H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, size)))
     SE = 0.01 * (2 * np.random.rand(len(tp), count * 2, size) - 1).astype(np.complex128)  # (bz, count * 2, size)
