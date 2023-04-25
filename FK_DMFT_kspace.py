@@ -3,11 +3,11 @@ from functools import partial
 from FK_Data import Ham
 import warnings
 warnings.filterwarnings('ignore')
-np.set_printoptions(precision=3, linewidth=80, suppress=True)
+np.set_printoptions(precision=3, linewidth=100, suppress=True)
 np.random.seed(4396)
 
 
-L = 20
+L = 36
 size = 4
 T = 0.005
 U = 1.
@@ -17,8 +17,9 @@ count = 20
 gap = 1
 tol_bi = 1e-7
 iota = 0
-momentum = 0.5
-adjMu = np.concatenate((np.linspace(0.5, 0., 36), np.linspace(0., 0.5, len(tp) - 36)))
+momentum = 0.99
+adjMu = 0.5 * np.ones(len(tp))
+# adjMu = np.concatenate((np.linspace(0.5, 0., 36), np.linspace(0., 0.5, len(tp) - 36)))
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
 
 
