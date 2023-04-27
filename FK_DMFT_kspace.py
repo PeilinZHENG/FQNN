@@ -2,10 +2,10 @@ import numpy as np
 from functools import partial
 from FK_Data import Ham
 import warnings
+
 warnings.filterwarnings('ignore')
 np.set_printoptions(precision=3, linewidth=110, suppress=True)
 np.random.seed(4396)
-
 
 L = 12
 size = 4
@@ -17,24 +17,51 @@ count = 20
 gap = 1
 tol_bi = 1e-7
 iota = 0
-momentum = 0.5
+momentum = 0.7
 # adjMu = 0.25 * np.ones(len(tp))
-adjMu = np.concatenate((np.linspace(0.5, -0.1, 36), np.linspace(-0.1, 0.5, len(tp) - 36)))
+adjMu = np.concatenate((np.linspace(0.5, 0.2, 36), np.linspace(0.2, 0.5, len(tp) - 36)))
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
+
+
+def fourier():
+    n = L // 2
+    temp = np.arange(-np.pi / 2, np.pi / 2, np.pi / n)
+    kx, ky = np.repeat(temp, n), np.tile(temp, n)
+    idx = np.arange(n * n)
+    res = np.zeros((L * L, L * L), dtype=np.complex128)
+    for i in range(n):
+        for j in range(n):
+            x, y, kidx = 2 * i, 2 * j, 4 * idx
+            res[x + y * L, kidx] = np.exp(-1j * (kx * x + ky * y))
+            x, y, kidx = 2 * i + 1, 2 * j, 4 * idx + 1
+            res[x + y * L, kidx] = np.exp(-1j * (kx * x + ky * y))
+            x, y, kidx = 2 * i, 2 * j + 1, 4 * idx + 2
+            res[x + y * L, kidx] = np.exp(-1j * (kx * x + ky * y))
+            x, y, kidx = 2 * i + 1, 2 * j + 1, 4 * idx + 3
+            res[x + y * L, kidx] = np.exp(-1j * (kx * x + ky * y))
+    return res / n
 
 
 def Hk(tp):
     n = L // 2
     temp = np.arange(-np.pi / 2, np.pi / 2, np.pi / n)
-    kx, ky = np.tile(temp, n), np.repeat(temp, n)
+    # res, i = np.zeros((L * L, L * L)), 0
+    # for kx in temp:
+    #     for ky in temp:
+    #         x = 2 * np.cos(kx)
+    #         y = 2 * np.cos(ky)
+    #         xy = 2 * tp * np.cos(kx + ky)
+    #         x_y = 2 * tp * np.cos(kx - ky)
+    #         res[i:i + 4, i:i + 4] = np.array([[0, x, y, xy], [x, 0, x_y, y], [y, x_y, 0, x], [xy, y, x, 0]])
+    #         i += 4
+    kx, ky = np.repeat(temp, n), np.tile(temp, n)
     onsite = np.zeros(n * n)
     x = 2 * np.cos(kx)
     y = 2 * np.cos(ky)
-    xy = 2 * tp * np.cos(kx + ky)
-    x_y = 2 * tp * np.cos(kx - ky)
+    xy = 2 * tp * (np.cos(kx + ky) + np.cos(kx - ky))
     A = np.stack((onsite, x, y, xy), axis=1)
-    B = np.stack((x, onsite, x_y, y), axis=1)
-    C = np.stack((y, x_y, onsite, x), axis=1)
+    B = np.stack((x, onsite, xy, y), axis=1)
+    C = np.stack((y, xy, onsite, x), axis=1)
     D = np.stack((xy, y, x, onsite), axis=1)
     return np.stack((A, B, C, D), axis=1)  # (L * L / size, size, size)
 
@@ -130,19 +157,18 @@ def op_str(nf):
 
 
 if __name__ == "__main__":
-    H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]  # (bz, 1, 1, L * L, L * L)
-    mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     if size == 4:
         H0 = np.stack([Hk(i) for i in tp], axis=0)[:, None]  # (bz, 1, L * L / size, size, size)
-    # else:
-    #     H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]  # (bz, 1, 1, L * L, L * L)
-    # print(np.linalg.eigvalsh(H0)[51].flatten().tolist())
-    # exit(0)
+    else:
+        H0 = np.stack([Ham(L, 0., j.item()).numpy() for j in tp], axis=0)[:, None, None]  # (bz, 1, 1, L * L, L * L)
+    # print(np.linalg.eigvalsh(H0)[-1].flatten().tolist())
+    mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
     H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, size)))
     SE = 0.01 * (2 * np.random.rand(len(tp), count * 2, size) - 1).astype(np.complex128)  # (bz, count * 2, size)
     # SE = np.zeros((len(tp), count * 2, size), dtype=np.complex128)
     E_mu = np.zeros((len(tp), 1))  # (bz, 1)
+    best_error = 1e10
     for l in range(epochs):
         Gloc = calc_Gloc(H0, SE)  # (bz, count * 2, size)
         WeissInv = 1 / Gloc + SE
@@ -151,10 +177,13 @@ if __name__ == "__main__":
         nf = calc_nf(E_mu, UoverWI)[:, None]  # (bz, 1, size)
         print('{} loop <nf>: {:.3f}'.format(l, np.mean(nf)))
         Gimp = nf / (WeissInv - U) + (1. - nf) / WeissInv
-        print("{} loop error: {:.3e}".format(l, np.linalg.norm(Gimp - Gloc)))
+        error = np.linalg.norm(Gimp - Gloc)
+        print("{} loop error: {:.3e}".format(l, error))
+        if error < best_error:
+            best_error = error
+            best_nf = nf.squeeze(1)
         SE = momentum * SE + (1. - momentum) * (WeissInv - 1 / Gimp)  # (bz, count * 2, size)
-    nf = nf.squeeze(1)
-    for i, op in enumerate(nf):
+    for i, op in enumerate(best_nf):
         print(i, '\t', op)
-    print('checkerboard:\n', op_cb(nf))
-    print('stripe:\n', op_str(nf))
+    print('checkerboard:\n', op_cb(best_nf))
+    print('stripe:\n', op_str(best_nf))
