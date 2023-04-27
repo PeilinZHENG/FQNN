@@ -287,8 +287,8 @@ if __name__ == "__main__":
     torch.manual_seed(4396)
 
     L = 12  # size = L ** 2
-    data = f'FK_{L}_QPT'
-    Net = 'Naive_sf_0'
+    data = f'FK_{L}_QPT_'
+    Net = 'Naive_1'
     T = 0.005
     save = True
     show = True
@@ -298,7 +298,7 @@ if __name__ == "__main__":
     iota = 0.
     momentum = 0.5
     momDisor = 0.
-    maxEpoch = 1000
+    maxEpoch = 2000
     milestone = 30
     f_filling = 0.5
     d_filling = 0.5
@@ -344,10 +344,10 @@ if __name__ == "__main__":
 
     '''construct Hamiltonians'''
     if 'QPT' in data:
-        tp = torch.linspace(0., 1.3, 66)
+        tp = torch.linspace(0., 1.3, 131)
         U = torch.ones(len(tp))
         mu = torch.zeros(len(tp))
-        adjMu = torch.cat((torch.linspace(0.5, -0.1, 36), torch.linspace(-0.1, 0.05, len(tp) - 36)))
+        adjMu = torch.cat((torch.linspace(0.5, 0.2, 71), torch.linspace(0.2, 0.5, len(tp) - 71)))
         H0 = torch.stack([Ham(L, i.item(), j.item()) for i, j in zip(mu, tp)], dim=0).unsqueeze(1)
     else:
         U = torch.linspace(1., 4., 150)
@@ -379,16 +379,17 @@ if __name__ == "__main__":
         H0_batch = H0[i * bz:(i + 1) * bz].to(device)
         T_batch = T[i * bz:(i + 1) * bz].to(device)
         U_batch = U[i * bz:(i + 1) * bz].to(device)
+        adjMu_batch = adjMu[i * bz:(i + 1) * bz].to(device) if adjMu is not None else None
         if '2d' in Net:
             if type(SEs) is torch.Tensor:
                 SE = SEs[i * bz:(i + 1) * bz].to(device)
             else:
-                SE, op = scf(T_batch, H0_batch, U_batch, model=None, adjMu=adjMu, reOP=True, OPfuns=(op_cb, op_str),
+                SE, op = scf(T_batch, H0_batch, U_batch, model=None, adjMu=adjMu_batch, reOP=True, OPfuns=(op_cb, op_str),
                              prinfo=True if i == 0 else False)  # (bz, scf.count, size)
                 SEs.append(SE.cpu())
                 OP.append(op.cpu())
         else:
-            SE, op = scf(T_batch, H0_batch, U_batch, model=model, adjMu=adjMu, reOP=True, OPfuns=(op_cb, op_str),
+            SE, op = scf(T_batch, H0_batch, U_batch, model=model, adjMu=adjMu_batch, reOP=True, OPfuns=(op_cb, op_str),
                          prinfo=True if i == 0 else False)  # (bz, scf.count, size)
             OP.append(op.cpu())
         if Net.startswith('C') or 'sf' in Net:

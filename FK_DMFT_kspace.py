@@ -2,16 +2,16 @@ import numpy as np
 from functools import partial
 from FK_Data import Ham
 import warnings
-
 warnings.filterwarnings('ignore')
 np.set_printoptions(precision=3, linewidth=110, suppress=True)
 np.random.seed(4396)
+
 
 L = 12
 size = 4
 T = 0.005
 U = 1.
-tp = np.linspace(0., 1.3, 66)
+tp = np.linspace(0., 1.3, 131)
 epochs = 1000
 count = 20
 gap = 1
@@ -19,7 +19,7 @@ tol_bi = 1e-7
 iota = 0
 momentum = 0.7
 # adjMu = 0.25 * np.ones(len(tp))
-adjMu = np.concatenate((np.linspace(0.5, 0.2, 36), np.linspace(0.2, 0.5, len(tp) - 36)))
+adjMu = np.concatenate((np.linspace(0.5, 0.2, 71), np.linspace(0.2, 0.5, len(tp) - 71)))
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
 
 
@@ -165,8 +165,7 @@ if __name__ == "__main__":
     mu = bisearch(partial(fix_filling, f_ele=False), np.zeros((len(tp), 1, 1, 1)), H0)  # (bz, 1, 1, 1)
     print('<nd>: {:.3f}'.format(np.mean(calc_nd0_avg(mu, H0))))
     H0 = H0 - diag_embed(np.tile(mu + adjMu[:, None, None, None], (1, 1, 1, size)))
-    SE = 0.01 * (2 * np.random.rand(len(tp), count * 2, size) - 1).astype(np.complex128)  # (bz, count * 2, size)
-    # SE = np.zeros((len(tp), count * 2, size), dtype=np.complex128)
+    SE = 0.1 * (2 * np.random.rand(len(tp), count * 2, size) - 1).astype(np.complex128)  # (bz, count * 2, size)
     E_mu = np.zeros((len(tp), 1))  # (bz, 1)
     best_error = 1e10
     for l in range(epochs):
