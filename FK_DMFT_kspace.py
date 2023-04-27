@@ -184,5 +184,7 @@ if __name__ == "__main__":
         SE = momentum * SE + (1. - momentum) * (WeissInv - 1 / Gimp)  # (bz, count * 2, size)
     for i, op in enumerate(best_nf):
         print(i, '\t', op)
-    print('checkerboard:\n', op_cb(best_nf))
-    print('stripe:\n', op_str(best_nf))
+    cb, st = op_cb(best_nf), op_str(best_nf)
+    np.save(f'results/FK_{L}_QPT_/SE+OP/kOP_0.005.npy', np.stack((cb, st), axis=0))
+    print('checkerboard:\n', cb)
+    print('stripe:\n', st)
