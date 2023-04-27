@@ -364,7 +364,7 @@ if __name__ == "__main__":
     T = T * torch.ones(len(U))
 
     '''compute self-energy by DMFT'''
-    bz = 75
+    bz = 150
     P = []
     if '2d' in Net:
         mymkdir(f'results/{data}/SE+OP')
