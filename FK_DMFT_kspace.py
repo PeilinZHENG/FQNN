@@ -17,7 +17,7 @@ count = 20
 gap = 1
 tol_bi = 1e-7
 iota = 0
-momentum = 0.8
+momentum = 0.7
 # adjMu = 0.25 * np.ones(len(tp))
 adjMu = np.concatenate((np.linspace(0.5, 0.2, 71), np.linspace(0.2, 0.5, len(tp) - 71)))
 iomega = 1j * (2 * np.arange(-count, count)[:, None] + 1) * np.pi * T  # (count * 2, 1)
@@ -185,6 +185,6 @@ if __name__ == "__main__":
     for i, op in enumerate(best_nf):
         print(i, '\t', op)
     cb, st = op_cb(best_nf), op_str(best_nf)
-    np.save(f'results/FK_{L}_QPT_/SE+OP/kOP_0.005.npy', np.stack((cb, st), axis=0))
+    np.save(f'results/FK_{L}_QPT/SE+OP/kOP_0.005.npy', np.stack((cb, st), axis=0))
     print('checkerboard:\n', cb)
     print('stripe:\n', st)
