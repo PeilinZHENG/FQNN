@@ -9,6 +9,7 @@ import numpy as np
 from FK_Data import Ham
 from utils import mymkdir
 import time
+np.set_printoptions(precision=3, linewidth=115, suppress=True)
 
 torch.manual_seed(0)
 
@@ -54,11 +55,10 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
             data = _utils.pin_memory.pin_memory(data, self._pin_memory_device)
         return data, index
 
+
 if __name__ == "__main__":
-    path = 'results/FK_14/SE+OP/OP_0.150.pt'
-    OP = torch.load(path).unsqueeze(0)
-    print(OP.shape)
-    torch.save(OP, path)
+    path = 'results/FK_12_QPT_/SE+OP/kOP_0.005.npy'
+    print(np.load(path))
     exit(0)
 
 

@@ -288,7 +288,7 @@ if __name__ == "__main__":
 
     L = 12  # size = L ** 2
     data = f'FK_{L}_QPT_'
-    Net = 'Naive_1'
+    Net = 'Naive_3'
     T = 0.005
     save = True
     show = True
@@ -296,7 +296,7 @@ if __name__ == "__main__":
     '''construct DMFT'''
     count = 20
     iota = 0.
-    momentum = 0.75
+    momentum = 0.6
     momDisor = 0.
     maxEpoch = 2000
     milestone = 30
