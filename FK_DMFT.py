@@ -296,7 +296,7 @@ if __name__ == "__main__":
     '''construct DMFT'''
     count = 20
     iota = 0.
-    momentum = 0.6
+    momentum = 0.75
     momDisor = 0.
     maxEpoch = 2000
     milestone = 30
