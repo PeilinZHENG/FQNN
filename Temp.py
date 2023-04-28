@@ -9,7 +9,7 @@ import numpy as np
 from FK_Data import Ham
 from utils import mymkdir
 import time
-np.set_printoptions(precision=3, linewidth=115, suppress=True)
+np.set_printoptions(precision=3, linewidth=95, suppress=True)
 
 torch.manual_seed(0)
 
@@ -57,97 +57,34 @@ class MySingleProcessDataLoaderIter(_SingleProcessDataLoaderIter):
 
 
 if __name__ == "__main__":
-    path = 'results/FK_12_QPT_/SE+OP/kOP_0.005.npy'
-    print(np.load(path))
-    exit(0)
-
-
-    data = np.load('results/result.npz')
-    L = 12
-    SE = torch.from_numpy(data['SE'])
-    OP = torch.from_numpy(data['op'])
-    torch.save(SE, 'results/FK_12_/SE+OP/SE_0.020.pt')
-    torch.save(OP, 'results/FK_12_/SE+OP/OP_0.020.pt')
-    exit(0)
-    U = torch.from_numpy(data['U'])
-    T = torch.from_numpy(data['T'])
-    mu = U / 2
-    H0 = torch.stack([Ham(L, i.item()) for i in mu], dim=0).unsqueeze(1)
-    mymkdir(f'datasets/FK_{L}_')
-    mymkdir(f'datasets/FK_{L}_/train')
-    mymkdir(f'datasets/FK_{L}_/test')
-    torch.save(H0, f'datasets/FK_{L}_/train/dataset.pt')
-    torch.save(H0, f'datasets/FK_{L}_/test/dataset.pt')
-    torch.save(SE, f'datasets/FK_{L}_/train/SE.pt')
-    torch.save(SE, f'datasets/FK_{L}_/test/SE.pt')
-    labels = torch.stack((U, T, torch.cat((torch.zeros(23), torch.ones(47)))), dim=1)
-    print(labels)
-    torch.save(labels, f'datasets/FK_{L}_/train/labels.pt')
-    torch.save(labels, f'datasets/FK_{L}_/test/labels.pt')
-
-
-    exit(0)
-
-    L = 10
-    T = 0.1
-    Net = 'Naive_2d_sf_0'
-    data = np.load(f'results/FK_{L}/{Net}/PD_{T:.3f}.npy')
-    U = data[0]
-    P = data[1]
-    OP = data[2]
-    PTPs = {'0.100': (1.5, 1.76), '0.110': (1.7, 2.01), '0.120': (1.8, 2.28), '0.130': (2.0, 2.6), '0.140': (2.2, 3.03),
-            '0.150': (2.4, 3.99)}
-    PTP, QMCPTP = PTPs[f'{T:.3f}']
-
-    '''plot phase diagram'''
+    OP = np.load('results/FK_12_QPT_/SE+OP/kOP_0.005.npy')
+    data = np.load('results/FK_12_QPT_/Naive_3/m=0.7/PD_0.005.npy')
+    x, P = data[0], data[1]
+    np.save('results/FK_12_QPT_/QPT_T=0.005.npy', np.concatenate((np.stack((x, P), axis=0), OP), axis=0))
+    labels = ['cb', 'stripe']
     fig, ax1 = plt.subplots()
-    plt.title(f'Metal VS Insulator / T={T:.3f}, L={L}')
-    # plt.axis([U[0], U[-1], 0., 1.])
-    ax1.set_xlim([U[0], U[-1]])
-    ax1.set_xlabel('U')
+    plt.axis([x[0], x[-1], 0., 1.])
+    plt.title('Checkerboard VS Stripe / T=0.005, L=12')
+    ax1.set_xlabel("t'")
+    ax1.set_xlim([x[0], x[-1]])
     ax1.set_ylabel('P', c='r')
-    ax1.set_ylim([0.4, 0.6])
-    ax1.set_yticks(0.4 + 0.02 * np.arange(11))
-    ax1.scatter(U, P, s=10, c='r', marker='o')
-    ax1.plot([U[0], U[-1]], [0.5, 0.5], 'ko--', linewidth=0.5, markersize=0.1)
-    if PTP is not None: ax1.plot([PTP, PTP], [0., 1.], 'go--', linewidth=0.5, markersize=0.1)
-    if QMCPTP is not None: ax1.plot([QMCPTP, QMCPTP], [0., 1.], 'yo--', linewidth=0.5, markersize=0.1)
+    ax1.set_ylim([0., 1.])
+    ax1.set_yticks(0.1 * np.arange(11))
+    ax1.scatter(x, P, s=10, c='r', marker='o')
+    ax1.plot([x[0], x[-1]], [0.5, 0.5], 'ko--', linewidth=0.5, markersize=0.1)
+    ax1.plot([0.575, 0.575], [0., 1.], 'go--', linewidth=0.5, markersize=0.1)
+    ax1.plot([1 / np.sqrt(2), 1 / np.sqrt(2)], [0., 1.], 'yo--', linewidth=0.5, markersize=0.1)
     ax1.tick_params(axis='y', labelcolor='r')
     ax2 = ax1.twinx()
     ax2.set_ylabel('OP', c='b')
     ax2.set_ylim([0., 1.])
     ax2.set_yticks(0.1 * np.arange(11))
-    ax2.scatter(U, OP, s=10, c='b', marker='^')
+    for i, op in enumerate(OP):
+        ax2.scatter(x, op, s=10, marker='^', label=labels[i])
+    ax2.legend(loc='lower right')
     ax2.tick_params(axis='y', labelcolor='b')
     plt.show()
     plt.close()
 
 
-    exit(0)
-    bz = 16
-    traindata = 0.1 * torch.arange(100).unsqueeze(-1).tile(1, 2)
-    trainlabels = ((1 - (-1) ** torch.arange(100)) / 2)
-    trainSEinit = torch.ones(100, 2)
-    train_dataset = LoadData(traindata, trainlabels, trainSEinit)
-    # generator = torch.Generator()
-    # generator.manual_seed(0)
-    # sampler = RandomSampler(train_dataset, replacement=True, generator=generator)
-    # sampler = CtrlRandomSampler(train_dataset)
-    train_loader = DataLoader(train_dataset, batch_size=bz, shuffle=True, num_workers=0, pin_memory=True)
-    for epoch in range(2):
-        for i, (x, se, index, target) in enumerate(train_loader):
-            print(epoch, i, 'train\n', x, '\n', index)
-            print(se)
 
-            train_loader.dataset.SEinit[index] = index.float().unsqueeze(-1).tile(1, 2)
-
-
-    exit(0)
-
-    model = TestNN(True).to('cuda')
-    print(model.scale.device)
-    torch.save(model.state_dict(), 'test.pth.tar')
-
-    check = torch.load('test.pth.tar', map_location="cpu")
-    model.load_state_dict(check)
-    print(check)
