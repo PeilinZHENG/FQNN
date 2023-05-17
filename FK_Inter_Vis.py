@@ -37,7 +37,7 @@ count = 20
 iota = 0.
 momentum = 0.7
 momDisor = 0.
-maxEpoch = 200
+maxEpoch = 2000
 milestone = 30
 f_filling = 0.5
 d_filling = 0.5
@@ -162,24 +162,53 @@ def FKTest(T, model, scf):
     if save: np.save('{}/PD_{:.3f}.npy'.format(path, T[0].item()), np.concatenate((np.stack((x, P), axis=0), OP), axis=0))
 
 
-def roc_curve(model):
+def roc_curve(model, scf):
+    if save:
+        path = 'results/{}'.format(data)
+        mymkdir(path)
     dataset = torch.load('datasets/{}/test/dataset.pt'.format(data))
     labels = torch.load('datasets/{}/test/labels.pt'.format(data))
     if Net.endswith('-'): labels = 1 - labels
     if '2d' in Net:
-        testdata = LoadFKHamDatawithSE(dataset, labels, z)
+        testdata = LoadFKHamDatawithSE(dataset, labels, torch.load('datasets/{}/train/SE.pt'.format(data)))
     else:
-        test
-    loader = torch.utils.data.DataLoader(testdata, batch_size=256, shuffle=False)
+        SEinit = 0.01 * (2. * torch.rand((len(dataset), scf.count, L * L)).type(scf.iomega0.dtype) - 1.)
+        testdata = LoadFKHamData(dataset, labels, SEinit)
+    loader = torch.utils.data.DataLoader(testdata, batch_size=128, shuffle=False)
     with torch.no_grad():
         y_true, y_pred = [], []
-        for g, label in loader:
-            y_true.append(label.numpy())
-            output = model(g.to(device))
-            if output.dim() == 1:
-                pred = LossPrepro(output, 'BCE', scale=scale)
-            else:
-                pred = torch.softmax(output, dim=1)[:, 1]
+        for pkg in loader:
+            H0 = pkg[0].to(device, non_blocking=True)
+            target = classes(pkg[-1][:, -1], args.output_size, 2, double).to(device=device, non_blocking=True)
+            bz = H0.size(0)
+            if args.SC2D:  # H0: (bz, scf.count, size, size)
+                if args.SF:
+                    H0 = H0[:, args.count:args.count + 1]  # (bz, 1, size, size)
+                    model.z = pkg[1][:, 0].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
+                              scf.iomega0[0, args.count]  # (bz,)
+                else:
+                    model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
+                               scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
+            else:  # H0: (bz, 1, size, size)
+                SE = scf(pkg[-1][:, 1].to(args.device, non_blocking=True), H0,
+                         pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
+                         SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
+                val_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
+                if args.SF:
+                    SE = SE[:, args.count:args.count + 1]  # (bz, 1, size, size)
+                    if model.z.size(0) != bz:
+                        model.z = pkg[-1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
+                                  scf.iomega0[0, args.count]  # (bz,)
+                    else:
+                        model.z = model.z[:, args.count, 0]  # (bz,)
+                elif model.z.size(0) != bz:
+                    model.z = (pkg[-1][:, 1:2].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
+                               scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
+                H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
+
+            # compute output
+            output = model(H0)
+            pred = torch.softmax(output, dim=1)[:, 1]
             y_pred.append(pred.cpu().numpy())
     y_true, y_pred = np.concatenate(y_true, axis=0), np.concatenate(y_pred, axis=0)
     # print(y_true.shape, y_pred.shape)
@@ -199,7 +228,8 @@ def roc_curve(model):
     plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
     if save:
-        path = dircheck(data, file, Net)
+        path = '{}/{}'.format(path, Net)
+        mymkdir(path)
         plt.savefig('{}/ROC_curve.jpg'.format(path))
     if show: plt.show()
     plt.close()
@@ -217,4 +247,6 @@ if __name__ == "__main__":
     model = model.to(device)
     model.eval()
 
-    FKTest(T, model, scf)
+    # FKTest(T, model, scf)
+
+    roc_curve(model, scf)
