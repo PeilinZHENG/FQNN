@@ -35,15 +35,15 @@ show = True
 '''construct DMFT'''
 count = 20
 iota = 0.
-momentum = 0.7
+momentum = 0.5
 momDisor = 0.
-maxEpoch = 2000
+maxEpoch = 200
 milestone = 30
 f_filling = 0.5
-d_filling = 0.5
+d_filling = None
 tol_sc = 1e-6
 tol_bi = 1e-7
-gap = 5.
+gap = 1
 
 
 def FKTest(T, model, scf):
@@ -178,6 +178,7 @@ def roc_curve(model, scf):
     with torch.no_grad():
         y_true, y_pred = [], []
         for pkg in loader:
+            y_true.append(pkg[-1][:, -1].long().numpy())
             H0 = pkg[0].to(device, non_blocking=True)
             bz = H0.size(0)
             if '2d' in Net:  # H0: (bz, scf.count, size, size)
