@@ -179,30 +179,28 @@ def roc_curve(model, scf):
         y_true, y_pred = [], []
         for pkg in loader:
             H0 = pkg[0].to(device, non_blocking=True)
-            target = classes(pkg[-1][:, -1], args.output_size, 2, double).to(device=device, non_blocking=True)
             bz = H0.size(0)
-            if args.SC2D:  # H0: (bz, scf.count, size, size)
-                if args.SF:
-                    H0 = H0[:, args.count:args.count + 1]  # (bz, 1, size, size)
-                    model.z = pkg[1][:, 0].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
-                              scf.iomega0[0, args.count]  # (bz,)
+            if '2d' in Net:  # H0: (bz, scf.count, size, size)
+                if 'sf' in Net:
+                    H0 = H0[:, count:count + 1]  # (bz, 1, size, size)
+                    model.z = pkg[1][:, 0].to(device=device, dtype=scf.iomega0.dtype, non_blocking=True) * \
+                              scf.iomega0[0, count]  # (bz,)
                 else:
-                    model.z = (pkg[1][:, :1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
+                    model.z = (pkg[1][:, :1].to(device=device, dtype=scf.iomega0.dtype, non_blocking=True) @
                                scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
             else:  # H0: (bz, 1, size, size)
-                SE = scf(pkg[-1][:, 1].to(args.device, non_blocking=True), H0,
-                         pkg[-1][:, 0].to(args.device, non_blocking=True), model=model,
-                         SEinit=pkg[1].to(args.device, non_blocking=True))  # (bz, scf.count, size)
-                val_ldr.dataset.SEinit[pkg[2]] = SE.cpu()
-                if args.SF:
-                    SE = SE[:, args.count:args.count + 1]  # (bz, 1, size, size)
+                SE = scf(pkg[-1][:, 1].to(device, non_blocking=True), H0,
+                         pkg[-1][:, 0].to(device, non_blocking=True), model=model,
+                         SEinit=pkg[1].to(device, non_blocking=True))  # (bz, scf.count, size)
+                if 'sf' in Net:
+                    SE = SE[:, count:count + 1]  # (bz, 1, size, size)
                     if model.z.size(0) != bz:
-                        model.z = pkg[-1][:, 1].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) * \
-                                  scf.iomega0[0, args.count]  # (bz,)
+                        model.z = pkg[-1][:, 1].to(device=device, dtype=scf.iomega0.dtype, non_blocking=True) * \
+                                  scf.iomega0[0, count]  # (bz,)
                     else:
-                        model.z = model.z[:, args.count, 0]  # (bz,)
+                        model.z = model.z[:, count, 0]  # (bz,)
                 elif model.z.size(0) != bz:
-                    model.z = (pkg[-1][:, 1:2].to(device=args.device, dtype=scf.iomega0.dtype, non_blocking=True) @
+                    model.z = (pkg[-1][:, 1:2].to(device=device, dtype=scf.iomega0.dtype, non_blocking=True) @
                                scf.iomega0).unsqueeze(-1)  # (bz, scf.count, 1)
                 H0 = H0 + torch.diag_embed(SE)  # (bz, scf.count, size, size)
 
@@ -210,6 +208,7 @@ def roc_curve(model, scf):
             output = model(H0)
             pred = torch.softmax(output, dim=1)[:, 1]
             y_pred.append(pred.cpu().numpy())
+
     y_true, y_pred = np.concatenate(y_true, axis=0), np.concatenate(y_pred, axis=0)
     # print(y_true.shape, y_pred.shape)
     predlabel = (y_pred > 0.5).astype(np.int16)
