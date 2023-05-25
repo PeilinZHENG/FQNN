@@ -1,1 +1,1 @@
-Source code of "A quantum neural network with efficient optimization and interpretability" (arXiv:2211.05793).
+Source code of "A fermion neural network with efficient optimization and quantum applicability" (arXiv:2211.05793).
