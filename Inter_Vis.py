@@ -27,10 +27,10 @@ torch.set_num_threads(1)
 amount = 100
 L = 12
 data = 'MNIST'
-Net = 'Relu_no_0'
+Net = 'CMedian_g_no_0'
 file = 'GRADIENT'
-save, show = True, False
-addpath = None #'Sig_0'
+save, show = False, True
+addpath = 'results/MNIST/GRADIENT/Sig_no_0'
 
 
 def plotfig(x, x_label, title):
@@ -204,8 +204,7 @@ def normalgrads(Grads):
     return Grads[:-1]
 
 
-def addgrads(changepath):
-    path = 'models/QLT/{}'.format(changepath)
+def addgrads(path):
     grads = np.load('{}/grads.npy'.format(path))
     agrads = np.load('{}/agrads.npy'.format(path))
     Grads = np.load('{}/grads_layers.npy'.format(path))
@@ -256,8 +255,8 @@ def LossAndAccuracy(path):
         else:
             plotbar2grads(normalgrads(Grads), 'QNN (CC)', normalgrads(Cgrads), 'ANN (Sigmoid)', 'Gradient')
             plotbar2grads(normalgrads(Agrads), 'QNN (CC)', normalgrads(Cagrads), 'ANN (Sigmoid)', 'Average Gradient')
-            np.save('results/data/Fig5/QNN_avg_grads.npy', normalgrads(Agrads))
-            np.save('results/data/Fig5/ANN_avg_grads.npy', normalgrads(Cagrads))
+            # np.save('results/QNN_avg_grads.npy', normalgrads(Agrads))
+            # np.save('results/ANN_avg_grads.npy', normalgrads(Cagrads))
     elif grads is not None:
         # plot3grads(grads, 'grads', grads1, 'grads(1)', grads_1, 'grads(-1)', 'Total VS First VS Last Gradients')
         plot3grads(agrads, 'agrads', agrads1, 'agrads(1)', agrads_1, 'agrads(-1)',
