@@ -1,5 +1,5 @@
 ## Parameters of GPU
-gpu=0
+gpu=1
 threads=16
 
 # Parameters of training
