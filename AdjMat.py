@@ -49,9 +49,6 @@ def Adj(L):
 
 
 if __name__ == "__main__":
-    # adj = torch.load('datasets/AdjMat.pt')
-    # print(adj)
-    # print(torch.linalg.inv(1e-3j * torch.eye(16) - adj))
     adj = Adj(L) * 1e-2 + torch.diag_embed(torch.cat((torch.rand(8), torch.zeros(8))))
     # save
     torch.save(adj, 'datasets/AdjMat.pt')
