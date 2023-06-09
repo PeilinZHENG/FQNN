@@ -32,7 +32,7 @@ torch.manual_seed(2200)
 
 L = 12
 data = 'Ins_12_d0.2'
-Net = 'CMedian_'
+Net = 'CMedian_inter'
 file = 'ENTANGLEMENT'
 Hdiago, Hreal, index = 4, False, np.random.randint(5000, size=5).tolist()
 print('Hdiago={}\tHreal={}\tindex={}'.format(Hdiago, Hreal, index))

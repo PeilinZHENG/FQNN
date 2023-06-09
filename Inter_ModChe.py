@@ -21,7 +21,7 @@ np.random.seed(9)
 
 
 data = 'Ins_12_d0.2'
-Net = 'Simple_'
+Net = 'Simple_inter'
 file = 'ENTANGLEMENT'
 adj = None
 index = np.random.randint(10000, size=1).tolist()
