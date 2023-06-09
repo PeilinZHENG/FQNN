@@ -26,7 +26,7 @@ torch.manual_seed(4396)
 
 
 L = 12  # size = L ** 2
-data = f'FK_{L}_QPT_'
+data = f'FK_{L}_QPT'
 Net = 'Naive_3'
 T = 0.005
 save = True

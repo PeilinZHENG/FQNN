@@ -1,0 +1,4 @@
+time=651.6289029121399
+L=12
+dataset.shape=torch.Size([6000, 1, 144, 144])
+labels.shape=torch.Size([6000])

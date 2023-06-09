@@ -12,7 +12,7 @@ os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 # parameters
 L = 12
-data = f'FK_{L}_QPT_'
+data = f'FK_{L}_QPT'
 TYPE = 'train'
 processors = 0
 if processors == 0: bz = 100
