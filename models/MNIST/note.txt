@@ -1,0 +1,1 @@
+The name of the FNN with the Hamiltonian input has the '-' at the end, and the name of the FNN with the LDOS input does not have the '-' at the end.
