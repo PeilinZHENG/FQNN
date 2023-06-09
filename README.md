@@ -1,5 +1,5 @@
 # FNN
-Source code of "A fermion neural network with efficient optimization and quantum applicability" (arXiv:2211.05793).
+Source code of "A fermion neural network with efficient optimization and quantum applicability" (https://doi.org/10.48550/arXiv.2211.05793).
 
 For the classical examples, run train.sh to load dataset and train the FNN, run Inter_Vis.py to show the results (Fig. 2 in the main text and Fig. 1, 2 in the supplemental material). The original data of Fig. 2 in the main text are shown in 'results/MNIST/Fig2'.
 
