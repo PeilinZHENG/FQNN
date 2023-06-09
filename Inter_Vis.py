@@ -30,7 +30,7 @@ data = 'MNIST'
 Net = 'CMedian_g_no_0'
 file = 'GRADIENT'
 save, show = False, True
-addpath = 'results/MNIST/GRADIENT/Sig_no_0'
+addpath = 'models/QLT/sig_0'
 
 
 def plotfig(x, x_label, title):

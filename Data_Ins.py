@@ -85,7 +85,7 @@ if __name__ == "__main__":
     os.environ['NUMEXPR_NUM_THREADS'] = '1'
     torch.set_num_threads(1)
 
-    L = 16
+    L = 12
 
     TYPE = 'train'
     amount, processors = 400, 50  # total_amount = amount * processors
@@ -121,5 +121,3 @@ if __name__ == "__main__":
     torch.save(Hs, '{}/dataset.pt'.format(path))                  # (amount * processors, 1, L ** 2, L ** 2)
     torch.save(labels.long(), '{}/labels.pt'.format(path))        # (amount * processors,)
 
-    # H = Ham(0.1, L)
-    # print(H)

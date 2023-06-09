@@ -92,13 +92,13 @@ def genData2(amount, L):
     return Hs, labels
 
 
-def genData_gridding(amount, L):  # 在矩形面积内随机取点，这里利用了矩形的平移
+def genData_gridding(amount, L):
     torch.manual_seed(int(time.time() * 1e16) % (2 ** 31 - 1))
-    Us = 2.6 * torch.rand(size=[int(amount)]) + 1.0  # Us的范围是1.0~3.6,平移后是1.0~4.中间挖去0.4
-    Ts = 0.1 * torch.rand(size=[int(amount)]) + 0.1  # Ts的范围是1.0~3.6,
+    Us = 2.6 * torch.rand(size=[int(amount)]) + 1.0
+    Ts = 0.1 * torch.rand(size=[int(amount)]) + 0.1
     label_bool = Us > 20 * Ts - 0.7
     Us[label_bool] = Us[label_bool] + 0.4
-    phase_labels = label_bool + 0  # 0是metal，1是checkboard
+    phase_labels = label_bool + 0  # 0 is metal，1 is checkboard
     Hs = Ham2(L, Us / 2)  # (amount, 2 ** L, 2 ** L)
     labels = torch.stack((Us, Ts, phase_labels), dim=-1)  # (amount, 3)
     return Hs, labels
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     os.environ['NUMEXPR_NUM_THREADS'] = '1'
     torch.set_num_threads(1)
 
-    L = 14
+    L = 12
 
     TYPE = 'train'
     amount, processors = 200, 50  # total_amount = amount * processors

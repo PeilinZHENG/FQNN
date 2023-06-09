@@ -45,15 +45,6 @@ def fourier():
 def Hk(tp):
     n = L // 2
     temp = np.arange(-np.pi / 2, np.pi / 2, np.pi / n)
-    # res, i = np.zeros((L * L, L * L)), 0
-    # for kx in temp:
-    #     for ky in temp:
-    #         x = 2 * np.cos(kx)
-    #         y = 2 * np.cos(ky)
-    #         xy = 2 * tp * np.cos(kx + ky)
-    #         x_y = 2 * tp * np.cos(kx - ky)
-    #         res[i:i + 4, i:i + 4] = np.array([[0, x, y, xy], [x, 0, x_y, y], [y, x_y, 0, x], [xy, y, x, 0]])
-    #         i += 4
     kx, ky = np.repeat(temp, n), np.tile(temp, n)
     onsite = np.zeros(n * n)
     x = 2 * np.cos(kx)
@@ -185,6 +176,6 @@ if __name__ == "__main__":
     for i, op in enumerate(best_nf):
         print(i, '\t', op)
     cb, st = op_cb(best_nf), op_str(best_nf)
-    np.save(f'results/FK_{L}_QPT_/SE+OP/kOP_0.005_{momentum:.2f}.npy', np.stack((cb, st), axis=0))
+    np.save(f'results/FK_{L}_QPT/SE+OP/kOP_0.005_{momentum:.2f}.npy', np.stack((cb, st), axis=0))
     print('checkerboard:\n', cb)
     print('stripe:\n', st)
