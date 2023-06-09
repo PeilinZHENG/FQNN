@@ -21,7 +21,7 @@ torch.set_num_threads(1)
 
 torch.manual_seed(0)
 
-Net = 'Sig_0'
+Net = 'Sig_'
 train = False
 batchsz = 256
 order = 2

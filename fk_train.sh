@@ -18,7 +18,7 @@ gap=1
 # Parameters of training
 L=12
 data=FK_${L}_QPT
-Net=Naive_sf_3
+Net=Naive_
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64

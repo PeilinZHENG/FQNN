@@ -238,7 +238,7 @@ if __name__ == "__main__":
 
     order, delta, tc = 1, 1e-2, 1
     data = 'Ins_12'
-    Net = 'Simple_en'
+    Net = 'Naive_'
     file = 'ENTANGLEMENT'
     index = np.random.randint(4000, size=5).tolist()
 

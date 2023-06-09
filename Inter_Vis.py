@@ -26,11 +26,11 @@ torch.set_num_threads(1)
 
 amount = 100
 L = 12
-data = 'MNIST'
-Net = 'CMedian_g_no_0'
+data = 'Ins_12_d0.2'
+Net = 'CMedian_'
 file = 'GRADIENT'
 save, show = False, True
-addpath = 'models/QLT/sig_0'
+addpath = 'models/QLT/Sig_'
 
 
 def plotfig(x, x_label, title):
