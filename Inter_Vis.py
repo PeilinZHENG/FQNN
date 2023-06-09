@@ -27,7 +27,7 @@ torch.set_num_threads(1)
 amount = 100
 L = 12
 data = 'Ins_12_d0.2'
-Net = 'CMedian_'
+Net = 'CMedian_grad'
 file = 'GRADIENT'
 save, show = False, True
 addpath = 'models/QLT/Sig_'
@@ -200,7 +200,7 @@ def readdata(filename):
 
 def normalgrads(Grads):
     Grads = np.mean(Grads[:, :3], axis=1)
-    Grads = Grads / np.max(Grads)
+    Grads = Grads / Grads[-1]
     return Grads[:-1]
 
 
