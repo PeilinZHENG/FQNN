@@ -27,7 +27,7 @@ torch.set_num_threads(1)
 amount = 100
 L = 12
 data = 'MNIST'
-Net = 'Naive_h_N_2'
+Net = 'Naive_-'
 file = 'STRUCTURE'
 save, show = False, False
 addpath = 'models/QLT/Sig_'
