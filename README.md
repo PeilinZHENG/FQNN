@@ -1,7 +1,7 @@
 # FNN
 Source code of "A fermion neural network with efficient optimization and quantum applicability" (https://doi.org/10.48550/arXiv.2211.05793).
 
-For the classical examples, run train.sh to load dataset and train the FNN, run Inter_Vis.py to show the results (Fig. 2 in the main text and Fig. 1, 2 in the supplemental material). The original data of Fig. 2 in the main text are shown in 'results/MNIST/Fig2'.
+For the classical examples, run train.sh to load dataset and train the FNN, run Inter_Vis.py to show the results (Fig. 2 in the main text and Fig. 1, 2 in the supplemental material). The original data of these figures are shown in 'results/MNIST/Fig2'.
 
 For the non-interacting topological insulator, run Data_Ins_d.py (Data_Ins.py) to generate the dataset of disordered models (clean models), run train.sh to train the FNN, run Inter_Vis.py to show the results (Fig. 5(a) in the main text) and plot the phase diagrams (Fig. 3(a)(c) in the main test), run Inter_ModChe.py to plot the spectrums (Fig. 3(b)(d) in the main text), run Inter_LogFlow.py to show the logic flow (Fig. 4 in the supplemental material), run Inter_ConBandAna.py for the generative example (Fig. 5(b) in the main text), run QLTTrain.py to generate the QLT dataset and train the ANN for comparison (Fig. 5(a) in the main text). 
 
