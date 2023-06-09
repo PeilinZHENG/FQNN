@@ -247,6 +247,6 @@ if __name__ == "__main__":
     model = model.to(device)
     model.eval()
 
-    # FKTest(T, model, scf)
-
     roc_curve(model, scf)
+
+    FKTest(T, model, scf)

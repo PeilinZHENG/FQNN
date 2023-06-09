@@ -316,114 +316,6 @@ def CorChannel(model, input_size, data_path, eta=1000):
                 break
 
 
-def FindHdelta(model, data_path, input_size, index=None):
-    labels = torch.load('{}/labels.pt'.format(data_path))
-    t_index = torch.nonzero(labels, as_tuple=True)
-    H0 = torch.load('{}/dataset.pt'.format(data_path))[t_index]
-    if index is not None: H0 = H0[index]
-    if double: H0 = H0.type(torch.complex128)
-    print(wrap_model(model, H0))
-
-    H = constrModH(input_size, model, double=double)
-    HQ = H[input_size:, input_size:]
-    Hc = H[:input_size, input_size:]
-    Ht = H_t(Hc, HQ)
-    Hd_theory = H_delta_theory(H0, Hc, HQ).squeeze(1).numpy()
-    H = H.repeat(H0.shape[0], 1, 1)
-    H[:, :input_size, :input_size] = H0.squeeze(1)
-
-    phi = spectrum(H)[0][:, :input_size].T
-    triu = np.triu_indices(input_size)
-    size = len(triu[0])
-    while True:
-        init = 0.1 * ((2 * np.random.rand(size) - 1) + 1j * (2 * np.random.rand(size) - 1))
-        result = optimize.minimize(partial(H_delta, size=input_size, index=triu, phi=phi), init, tol=1e-8,
-                                   method="Nelder-Mead")
-        if result.success:
-            print('H_delta={}'.format(H_delta(result.x, input_size, triu, phi)))
-            break
-    Hd = np.zeros((size, size), dtype=np.complex128)
-    Hd[index] = result.x
-    Hd = Hd + Hd.T.conj()
-    print(np.sum(np.abs(Hd)))
-    print(np.sum(np.abs(Hd_theory - Hd), axis=(1, 2)))
-    Hi = H_input(torch.from_numpy(Hd).type(torch.complex64), Ht.type(torch.complex64), delta)
-    print(wrap_model(model, Hi))
-
-
-def FindHdelta_torch(model, input_size, delta, diago, real, qlt, S, data_path, index=None):
-    if data_path is None:
-        H0 = Ham(1.0, L)[None, None, ...]
-    else:
-        H0 = torch.load('{}/dataset.pt'.format(data_path))
-        labels = torch.load('{}/labels.pt'.format(data_path))
-        if data != 'Ins_12':
-            H0 = torch.cat((H0, torch.load('datasets/Ins_12/test/dataset.pt')), dim=0)
-            labels = torch.cat((labels, torch.load('datasets/Ins_12/test/labels.pt')), dim=0)
-        t_index = torch.nonzero(labels, as_tuple=True)
-        H0 = H0[t_index]
-        if index is not None: H0 = H0[index]
-    if double: H0 = H0.type(torch.complex128)
-    print('H0\nQNN=\n{}'.format(wrap_model(model, H0)))
-    cn = []
-    for h in H0.squeeze(1):
-        cn.append(abs(ChernNumber(h, L, qlt, S)))
-        print(Kubo(h))
-    print('Chern number=\n{}\n'.format(np.array(cn)))
-
-    H = constrModH(input_size, model, double=double)
-    HQ = H[input_size:, input_size:]
-    Hc = H[:input_size, input_size:]
-    # Ht = H_t(Hc, HQ)
-    Ht = Ham(kappa, L)
-    print(Kubo(Ht))
-    print('Ht\nQNN={}\tChern Number={}\n'.format(wrap_model(model, Ht[None, None, ...]), abs(ChernNumber(Ht, L, qlt, S))))
-    Hd_theory = H_delta_theory(H0, Hc, HQ)
-    print('H_delta_theory\nQNN=\n{}'.format(wrap_model(model, Hd_theory)))
-    cn = []
-    for h in Hd_theory.squeeze(1):
-        cn.append(abs(ChernNumber(h, L, qlt, S)))
-    print('Chern number=\n{}\n'.format(np.array(cn)))
-    H = H.repeat(H0.shape[0], 1, 1)
-    H[:, :input_size, :input_size] = H0.squeeze(1)
-    phi, values = spectrum(H, numpy=False)
-    phi = phi[:, :input_size].T
-    print('H\nEigenvalues\n={}\n'.format(values.numpy()))
-    exit(0)
-
-    if load and os.path.exists('results/{}/{}/{}/H_delta.pt'.format(data, file, Net)):
-        print('Load H_delta')
-        Hd = torch.load('results/{}/{}/{}/H_delta.pt'.format(data, file, Net))
-        # print(Hd[:10, :10])
-    else:
-        print('Start training')
-        H = H_delta_torch(input_size, diago, real)
-        optimizer = Optimizer('Adam', H.parameters(), lr=1e-3, weight_decay=0, betas=(0.9, 0.999))
-        best, Hd = 100., None
-        for i in range(2001):
-            loss = H(phi)
-            if i % 200 == 0:
-                print('{}: {}'.format(i, loss.item()))
-            optimizer.zero_grad()
-            loss.backward()
-            # nn.utils.clip_grad_norm_(model.parameters(), 10.)
-            optimizer.step()
-            cur = H(phi).item()
-            if cur <= best:
-                best = cur
-                Hd = H.Hamil().detach().data
-        print('Final best: {}'.format(best))
-        print('Finish training\n')
-        if save: torch.save(Hd, '{}/H_delta.pt'.format(dircheck(data, file, Net)))
-    print('H_delta\nnorm={}'.format(Hd.norm(2).item()))
-    print('dist={}'.format((Hd_theory.squeeze(1) - Hd).norm(2, dim=(1, 2)).numpy()))
-    print('QNN={}\tChern Number={}\n'.format(
-        wrap_model(model, Hd[None, None, ...].type(torch.complex128 if double else torch.complex64)),
-        abs(ChernNumber(Hd, L, qlt, S))))
-    Hi = H_input(Hd.type(torch.complex64), Ht, delta)
-    print('Hi\nQNN={}\tChern Number={}\n'.format(wrap_model(model, Hi), abs(ChernNumber(Hi.squeeze(), L, qlt, S))))
-
-
 def DetTran_torch(model, input_size, delta, n, qlt, S, diago, amount=amount, print_tl=False):
     H_model = constrModH(input_size, model, double=double).type(torch.complex128)
     # Ht = H_t(H_model[:input_size, input_size:], H_model[input_size:, input_size:])
@@ -581,12 +473,8 @@ if __name__ == "__main__":
 
     DetTran_torch(model, input_size, delta, n, qlt, S, Hdiago)
 
-    # FindHdelta_torch(model, input_size, delta, Hdiago, Hreal, qlt, S, data_path, index=index)
-
     # Kubo_test(L)
 
     # SpecAna(model, model_path, data_path)
 
     # CorChannel(model, input_size, data_path)
-
-    # FindHdelta(model, data_path, input_size, index)

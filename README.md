@@ -1,2 +1,7 @@
 Source code of "A fermion neural network with efficient optimization and quantum applicability" (arXiv:2211.05793).
-For classical examples, run train.sh to load dataset and train, run Inter_Vis.py to show the results. The original data of Fig. 2 in the main text are shown in 'result/MNIST/Fig2'.
+
+For classical examples, run train.sh to load dataset and train the FNN, run Inter_Vis.py to show the results (Fig. 2 in the main text and Fig. 1, 2 in the supplemental material). The original data of Fig. 2 in the main text are shown in 'results/MNIST/Fig2'.
+
+For the non-interacting topological insulator, run Data_Ins_d.py (Data_Ins.py) to generate the dataset of disordered models (clean models), run train.sh to train the FNN, run Inter_Vis.py to show the results (Fig. 5(a) in the main text) and plot the phase diagram (Fig. 3(a)(c) in the main test), run Inter_ModChe.py to plot the spectrum (Fig. 3(b)(d) in the main text), run Inter_LogFlow.py to show the logic flow (Fig. 4 in the supplemental material), run Inter_ConBandAna.py for the generative example (Fig. 5(b) in the main text).
+
+For the strongly correlated systems, run FK_Data_QPT.py (FK_Data.py) to generate the dataset of quantum phase transition (metal-insulator transition), run fk_train.sh to train the FNN, run FK_Inter_Vis.py to show the results and plot the phase diagram (Fig. 4 in the main text and Fig. 7 in the supplemental material), run FK_DMFT.py (FK_DMFT_kspace.py) to compute the order parameters of Falicov_Kimbal model at 2D by DMFT in real (momentum) space and plot the phase diagram (Fig. 5, 6 in the supplemental material).
