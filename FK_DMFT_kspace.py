@@ -176,6 +176,6 @@ if __name__ == "__main__":
     for i, op in enumerate(best_nf):
         print(i, '\t', op)
     cb, st = op_cb(best_nf), op_str(best_nf)
-    np.save(f'results/FK_{L}_QPT/SE+OP/kOP_0.005_{momentum:.2f}.npy', np.stack((cb, st), axis=0))
+    np.save(f'results/FK_{L}_QPT/SE+OP/kOP_0.005.npy', np.stack((cb, st), axis=0))
     print('checkerboard:\n', cb)
     print('stripe:\n', st)
