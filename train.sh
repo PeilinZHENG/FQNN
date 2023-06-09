@@ -4,9 +4,9 @@ threads=16
 
 # Parameters of training
 L=12
-data=Ins_12
+data=Ins_12_d0.2
 adj=None
-Net=Naive_
+Net=Simple_
 input_size=$(($L*$L))
 embedding_size=100
 hidden_size=64

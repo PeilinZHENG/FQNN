@@ -237,8 +237,8 @@ if __name__ == "__main__":
     torch.set_num_threads(1)
 
     order, delta, tc = 1, 1e-2, 1
-    data = 'Ins_12'
-    Net = 'Naive_'
+    data = 'Ins_12_d0.2'
+    Net = 'Simple_'
     file = 'ENTANGLEMENT'
     index = np.random.randint(4000, size=5).tolist()
 

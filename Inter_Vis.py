@@ -26,10 +26,10 @@ torch.set_num_threads(1)
 
 amount = 100
 L = 12
-data = 'Ins_12_d0.2'
-Net = 'CMedian_grad'
-file = 'GRADIENT'
-save, show = False, True
+data = 'MNIST'
+Net = 'Naive_h_N_2'
+file = 'STRUCTURE'
+save, show = False, False
 addpath = 'models/QLT/Sig_'
 
 
