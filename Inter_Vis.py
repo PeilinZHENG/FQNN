@@ -295,7 +295,6 @@ def InsulatorTest(model, device):
         # P = model(Gs).data.cpu().numpy()
     else:
         P = F.softmax(model(Gs), dim=1)[:, 1].data.cpu().numpy()
-    # print(P)
 
     plt.figure()
     plt.axis([0., 1., min(P), max(P)])
