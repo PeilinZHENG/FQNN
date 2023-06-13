@@ -1,7 +1,7 @@
 import torch
 
 
-L = 4
+L = 12
 
 def obc(x, y, L):
     if x < 0 or x > L - 1:
