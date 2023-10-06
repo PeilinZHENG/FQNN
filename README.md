@@ -1,5 +1,5 @@
 # FNN
-Source code of ["Efficient and quantum-adaptive machine learning with fermion neural networks"](https://doi.org/10.48550/arXiv.2211.05793).
+Source code of ["Efficient and quantum-adaptive machine learning with fermion neural networks"](https://arxiv.org/abs/2211.05793) ([Phys. Rev. Applied 20, 044002 (2023)](https://journals.aps.org/prapplied/abstract/10.1103/PhysRevApplied.20.044002)).
 
 For the classical examples, run train.sh to load dataset and train the FNN, run Inter_Vis.py to show the results (Fig. 2 in the main text and Fig. 1, 2 in the supplemental material). The original data of these figures are shown in 'results/MNIST/Fig2'.
 
