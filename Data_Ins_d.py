@@ -184,7 +184,7 @@ if __name__ == "__main__":
     path = '{}/{}'.format(path, TYPE)
     mymkdir(path)
 
-    t= time.time()
+    t = time.time()
 
     strength = torch.stack(
         (torch.linspace(1., 3, amount), torch.linspace(0., 1., amount), torch.linspace(0., 0.5, amount)), dim=1)

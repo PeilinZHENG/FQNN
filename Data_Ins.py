@@ -97,7 +97,7 @@ if __name__ == "__main__":
     path = '{}/{}'.format(path, TYPE)
     mymkdir(path)
 
-    t= time.time()
+    t = time.time()
 
     Hs, labels = [], []
     mp.set_start_method('fork', force=True)
