@@ -325,10 +325,8 @@ def main_worker(args):
     else:
         raise NameError('Wrong Dataset')
 
-    tra_ldr = DataLoader(tra_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.workers,
-                              pin_memory=True)
-    val_ldr = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers,
-                            pin_memory=True)
+    tra_ldr = DataLoader(tra_ds, batch_size=args.batch_size, shuffle=True, num_workers=args.workers, pin_memory=True)
+    val_ldr = DataLoader(val_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.workers, pin_memory=True)
     temp = 'tra_ds:{}\ttra_ldr:{}\tval_ds:{}\tval_ldr:{}'.format(len(tra_ds), len(tra_ldr), len(val_ds), len(val_ldr))
     print(temp)
     args.f.write('{}\n\n'.format(temp))
