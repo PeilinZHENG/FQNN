@@ -288,7 +288,7 @@ def dos(model, H0, labels, input_size, output_size, scale, loc, device, adj=None
             DOS.append(DOS_NN.data.cpu().numpy())
         DOS = np.stack(DOS, axis=2)
         for D, label in zip(DOS, labels):
-            plotOutputVSE(Es, D, label, "FBQNN", loc)
+            plotOutputVSE(Es, D, label, "FNN", loc)
 
 
 if __name__ == "__main__":
