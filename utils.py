@@ -334,9 +334,10 @@ def readinfo(filename, anotherfile=None):
         else:
             restr = tuple(map(int_or_bool, restr.split(',')))
     if anotherfile is not None:
-        with open(anotherfile, "w") as f0:
-            for l in cont:
-                f0.write(l)
+        shutil.copyfile(filename, anotherfile)
+        # with open(anotherfile, "w") as f0:
+        #     for l in cont:
+        #         f0.write(l)
     return input_size, output_size, embedding_size, hidden_size, z, hermi, diago, restr, scale, real, double
 
 
